@@ -238,15 +238,26 @@ void ClothSimulator::init() {
 
 bool ClothSimulator::isAlive() { return is_alive; }
 
+double sample[20];
 void ClothSimulator::drawContents() {
   glEnable(GL_DEPTH_TEST);
 
   if (!is_paused) {
     vector<Vector3D> external_accelerations = {gravity};
 
+    for (int i = 1; i < 20; i++) { sample[i - 1] = sample[i]; }
+    std::clock_t start;
+    start = std::clock();
+
     for (int i = 0; i < simulation_steps; i++) {
       cloth->simulate(frames_per_sec, simulation_steps, cp, external_accelerations, collision_objects);
     }
+
+    sample[19] = std::clock() - start;
+    double avg = 0;
+    for (int i = 0; i < 20; i++) { avg += sample[i]; }
+    cout << "time: " << (int) (avg / 20.0) << endl;
+
   }
 
   // Bind the active shader

@@ -7,6 +7,8 @@
 #include "collision/plane.h"
 #include "collision/sphere.h"
 
+//#include <timer.h>
+
 using namespace std;
 
 int ClothType = 1;                                 // Final Project
@@ -161,6 +163,9 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
                      vector<CollisionObject *> *collision_objects) {
   double mass = width * height * cp->density / num_width_points / num_height_points;
   double delta_t = 1.0f / frames_per_sec / simulation_steps;
+  
+  // std::clock_t start;
+  // start = std::clock();
 
   // Final Project
   switch (ClothType)
@@ -183,19 +188,21 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
   for (Vector3D a: external_accelerations) {
       f += mass * a;
   }
+
+//#pragma omp parallel for
   for (int i = 0; i < point_masses.size(); i++) {
       point_masses[i].forces = mass * f;
   }
+
   if (cp->enable_bending_constraints || cp->enable_structural_constraints || cp->enable_shearing_constraints) {
-      double KS, force_s;
-      Vector3D force;
+//#pragma omp parallel for
       for (Spring &spring: springs) {
-          KS = (spring.spring_type == BENDING) ? cp->ks * spring.bending_coefficient : cp->ks;
-          KS = KS * spring.ks_coefficient;
-          force_s = KS * ((spring.pm_b->position - spring.pm_a->position).norm() - spring.rest_length);
-          force = (spring.pm_a->position - spring.pm_b->position).unit();
-          spring.pm_a->forces -= force_s * force;
-          spring.pm_b->forces += force_s * force;
+          double KS = (spring.spring_type == BENDING) ? cp->ks * spring.bending_coefficient : cp->ks;
+          Vector3D force = (KS * spring.ks_coefficient) 
+              * ((spring.pm_b->position - spring.pm_a->position).norm() - spring.rest_length)
+              * (spring.pm_a->position - spring.pm_b->position).unit();
+          spring.pm_a->forces -= force;
+          spring.pm_b->forces += force;
       }
   }
 
@@ -203,6 +210,7 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
     double not_damp = 1 - cp->damping / 100.0;
     double delta_t2 = delta_t * delta_t;
     double delta_t2_mass = delta_t2 / mass;
+//#pragma omp parallel for
     for (PointMass &pm: point_masses) {
         if (pm.pinned) { continue; }
         Vector3D newPos = pm.position + (pm.position - pm.last_position) * not_damp + (pm.forces * delta_t2_mass);
@@ -246,6 +254,7 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
           }
       }
   }
+  // cout << "time: " << std::clock() - start << endl;
 }
 
 void Cloth::build_spatial_map() {
@@ -255,9 +264,8 @@ void Cloth::build_spatial_map() {
   map.clear();
 
   // TODO (Part 4): Build a spatial map out of all of the point masses.
-  float key;
   for (PointMass &pM : point_masses) {
-      key = hash_position(pM.position);
+      float key = hash_position(pM.position);
       if (map.find(key) == map.end()) {     // the key not found
         map[key] = new vector<PointMass*>();
       }
@@ -270,10 +278,9 @@ void Cloth::self_collide(PointMass& pm, double simulation_steps) {
     float thick = 2 * thickness;
     int counter = 0;
     Vector3D avgCorr = 0;
-    Vector3D vec;
-    float hashVal = hash_position(pm.position);
-    for (PointMass* cPm : *map.at(hashVal)) {
-        vec = pm.position - cPm->position;
+
+    for (PointMass* cPm : *map.at(hash_position(pm.position))) {
+        Vector3D vec = pm.position - cPm->position;
         float dist = vec.norm();
         if (dist != 0 && dist < thick) {
             avgCorr += (thick - dist) * vec.unit();
