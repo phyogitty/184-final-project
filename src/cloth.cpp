@@ -189,13 +189,13 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
       f += mass * a;
   }
 
-//#pragma omp parallel for
+#pragma omp parallel for
   for (int i = 0; i < point_masses.size(); i++) {
       point_masses[i].forces = mass * f;
   }
 
   if (cp->enable_bending_constraints || cp->enable_structural_constraints || cp->enable_shearing_constraints) {
-//#pragma omp parallel for
+#pragma omp parallel for
       for (Spring &spring: springs) {
           double KS = (spring.spring_type == BENDING) ? cp->ks * spring.bending_coefficient : cp->ks;
           Vector3D force = (KS * spring.ks_coefficient) 
@@ -210,7 +210,7 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
     double not_damp = 1 - cp->damping / 100.0;
     double delta_t2 = delta_t * delta_t;
     double delta_t2_mass = delta_t2 / mass;
-//#pragma omp parallel for
+#pragma omp parallel for
     for (PointMass &pm: point_masses) {
         if (pm.pinned) { continue; }
         Vector3D newPos = pm.position + (pm.position - pm.last_position) * not_damp + (pm.forces * delta_t2_mass);
