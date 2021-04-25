@@ -7,11 +7,12 @@
 #include "collision/plane.h"
 #include "collision/sphere.h"
 
-//#include <timer.h>
+#include "nmmintrin.h" // for SSE4.2
+#include "immintrin.h" // for AVX
 
 using namespace std;
 
-int ClothType = 1;                                 // Final Project
+int ClothType = 0;                                 // Final Project
 
 Cloth::Cloth(double width, double height, int num_width_points,
              int num_height_points, float thickness) {
@@ -163,11 +164,9 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
                      vector<CollisionObject *> *collision_objects) {
   double mass = width * height * cp->density / num_width_points / num_height_points;
   double delta_t = 1.0f / frames_per_sec / simulation_steps;
-  
-  // std::clock_t start;
-  // start = std::clock();
 
   // Final Project
+  size_t limit_i;
   switch (ClothType)
   {
   case 1:
@@ -185,60 +184,172 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
 
   // TODO (Part 2): Compute total force acting on each point mass.
   Vector3D f = 0;
-  for (Vector3D a: external_accelerations) {
-      f += mass * a;
+  for (Vector3D a: external_accelerations) { f += mass * a; }
+  
+  /**/
+#pragma omp parallel for                                                                        // OMP Parallel
+  for (PointMass& pm : point_masses) {
+      pm.forces = f;
   }
+  /**/
 
-#pragma omp parallel for
-  for (int i = 0; i < point_masses.size(); i++) {
-      point_masses[i].forces = mass * f;
+  /*
+  limit_i = 4 * (point_masses.size() / 4);
+#pragma omp parallel for                                                                        // OMP Parallel
+  for (size_t i = 0; i < limit_i; i += 4) {
+      point_masses[i].forces = f;
+      point_masses[i + 1].forces = f;
+      point_masses[i + 2].forces = f;
+      point_masses[i + 3].forces = f;
   }
+  for (size_t i = limit_i; i < point_masses.size(); i += 1) {
+      point_masses[i].forces = f;
+  }
+  */
 
   if (cp->enable_bending_constraints || cp->enable_structural_constraints || cp->enable_shearing_constraints) {
-#pragma omp parallel for
-      for (Spring &spring: springs) {
+      /**/
+#pragma omp parallel for                                                                        // OMP Parallel
+      for (Spring& spring : springs) {
           double KS = (spring.spring_type == BENDING) ? cp->ks * spring.bending_coefficient : cp->ks;
-          Vector3D force = (KS * spring.ks_coefficient) 
-              * ((spring.pm_b->position - spring.pm_a->position).norm() - spring.rest_length)
-              * (spring.pm_a->position - spring.pm_b->position).unit();
+          Vector3D force = (KS * spring.ks_coefficient) * ((spring.pm_b->position - spring.pm_a->position).norm() - spring.rest_length) * (spring.pm_a->position - spring.pm_b->position).unit();
           spring.pm_a->forces -= force;
           spring.pm_b->forces += force;
       }
+      /**/
+
+      /*
+      limit_i = 4 * (springs.size() / 4);
+#pragma omp parallel for                                                                        // OMP Parallel
+      for (size_t i = 0; i < limit_i; i += 4) {
+          double KS = (springs[i].spring_type == BENDING) ? cp->ks * springs[i].bending_coefficient : cp->ks;
+          Vector3D force = (KS * springs[i].ks_coefficient) * ((springs[i].pm_b->position - springs[i].pm_a->position).norm() - springs[i].rest_length) * (springs[i].pm_a->position - springs[i].pm_b->position).unit();
+          springs[i].pm_a->forces -= force;
+          springs[i].pm_b->forces += force;
+
+          double KS1 = (springs[i + 1].spring_type == BENDING) ? cp->ks * springs[i + 1].bending_coefficient : cp->ks;
+          Vector3D force1 = (KS1 * springs[i + 1].ks_coefficient) * ((springs[i + 1].pm_b->position - springs[i + 1].pm_a->position).norm() - springs[i + 1].rest_length) * (springs[i + 1].pm_a->position - springs[i + 1].pm_b->position).unit();
+          springs[i + 1].pm_a->forces -= force1;
+          springs[i + 1].pm_b->forces += force1;
+
+          double KS2 = (springs[i + 2].spring_type == BENDING) ? cp->ks * springs[i + 2].bending_coefficient : cp->ks;
+          Vector3D force2 = (KS2 * springs[i + 2].ks_coefficient) * ((springs[i + 2].pm_b->position - springs[i + 2].pm_a->position).norm() - springs[i + 2].rest_length) * (springs[i + 2].pm_a->position - springs[i + 2].pm_b->position).unit();
+          springs[i + 2].pm_a->forces -= force2;
+          springs[i + 2].pm_b->forces += force2;
+
+          double KS3 = (springs[i + 3].spring_type == BENDING) ? cp->ks * springs[i + 3].bending_coefficient : cp->ks;
+          Vector3D force3 = (KS3 * springs[i + 3].ks_coefficient) * ((springs[i + 3].pm_b->position - springs[i + 3].pm_a->position).norm() - springs[i + 3].rest_length) * (springs[i + 3].pm_a->position - springs[i + 3].pm_b->position).unit();
+          springs[i + 3].pm_a->forces -= force3;
+          springs[i + 3].pm_b->forces += force3;
+      }
+      for (size_t i = limit_i; i < springs.size(); i += 1) {
+          //Spring spring = springs[i];
+          double KS = (springs[i].spring_type == BENDING) ? cp->ks * springs[i].bending_coefficient : cp->ks;
+          Vector3D force = (KS * springs[i].ks_coefficient) * ((springs[i].pm_b->position - springs[i].pm_a->position).norm() - springs[i].rest_length) * (springs[i].pm_a->position - springs[i].pm_b->position).unit();
+          springs[i].pm_a->forces -= force;
+          springs[i].pm_b->forces += force;
+      }
+      */
+
   }
 
   // TODO (Part 2): Use Verlet integration to compute new point mass positions
     double not_damp = 1 - cp->damping / 100.0;
     double delta_t2 = delta_t * delta_t;
     double delta_t2_mass = delta_t2 / mass;
-#pragma omp parallel for
-    for (PointMass &pm: point_masses) {
+
+    //__m256 vec = _mm256_set_pd(0.0, 0.0, 0.0, 0.0);
+
+#pragma omp parallel for                                                                        // OMP Parallel
+    for (PointMass& pm : point_masses) {
         if (pm.pinned) { continue; }
         Vector3D newPos = pm.position + (pm.position - pm.last_position) * not_damp + (pm.forces * delta_t2_mass);
         pm.last_position = pm.position;
         pm.position = newPos;
     }
 
+    /*
+#pragma omp parallel for                                                                        // OMP Parallel
+    for (PointMass &pm: point_masses) {
+        if (pm.pinned) { continue; }
+        Vector3D newPos = pm.position + (pm.position - pm.last_position) * not_damp + (pm.forces * delta_t2_mass);
+        pm.last_position = pm.position;
+        pm.position = newPos;
+    }
+    */
 
+    /*
+    limit_i = 4 * (point_masses.size() / 4);
+#pragma omp parallel for                                                                        // OMP Parallel
+    for (size_t i = 0; i < limit_i; i += 4) {
+        if (!point_masses[i].pinned) {
+            Vector3D newPos = point_masses[i].position + (point_masses[i].position - point_masses[i].last_position) * not_damp + (point_masses[i].forces * delta_t2_mass);
+            point_masses[i].last_position = point_masses[i].position;
+            point_masses[i].position = newPos;
+        }
+        if (!point_masses[i + 1].pinned) {
+            Vector3D newPos1 = point_masses[i + 1].position + (point_masses[i + 1].position - point_masses[i + 1].last_position) * not_damp + (point_masses[i + 1].forces * delta_t2_mass);
+            point_masses[i + 1].last_position = point_masses[i + 1].position;
+            point_masses[i + 1].position = newPos1;
+        }
+        if (!point_masses[i + 2].pinned) {
+            Vector3D newPos2 = point_masses[i + 2].position + (point_masses[i + 2].position - point_masses[i + 2].last_position) * not_damp + (point_masses[i + 2].forces * delta_t2_mass);
+            point_masses[i + 2].last_position = point_masses[i + 2].position;
+            point_masses[i + 2].position = newPos2;
+        }
+        if (!point_masses[i + 3].pinned) {
+            Vector3D newPos3 = point_masses[i + 3].position + (point_masses[i + 3].position - point_masses[i + 3].last_position) * not_damp + (point_masses[i + 3].forces * delta_t2_mass);
+            point_masses[i + 3].last_position = point_masses[i + 3].position;
+            point_masses[i + 3].position = newPos3;
+        }
+    }
+    for (size_t i = limit_i; i < point_masses.size(); i += 1) {
+        if (!point_masses[i].pinned) {
+            Vector3D newPos = point_masses[i].position + (point_masses[i].position - point_masses[i].last_position) * not_damp + (point_masses[i].forces * delta_t2_mass);
+            point_masses[i].last_position = point_masses[i].position;
+            point_masses[i].position = newPos;
+        }
+    }
+    */
+
+    /*
+    // TODO (Part 4): Handle self-collisions.
+    // TODO (Part 3): Handle collisions with other primitives.
+    build_spatial_map();    
+#pragma omp parallel for                                                                        // OMP Parallel
+    for (PointMass& pM : point_masses) {
+        self_collide(pM, simulation_steps);
+#pragma omp parallel for                                                                        // OMP Parallel
+        for (CollisionObject* cObj : *collision_objects) {
+            cObj->collide(pM);
+        }
+    }
+    */
+    
   // TODO (Part 4): Handle self-collisions.
   build_spatial_map();
+#pragma omp parallel for                                                                        // OMP Parallel
   for (PointMass& pM : point_masses) {
       self_collide(pM, simulation_steps);
   }
 
   // TODO (Part 3): Handle collisions with other primitives.
+#pragma omp parallel for                                                                        // OMP Parallel
   for (PointMass &pM: point_masses) {
+#pragma omp parallel for                                                                        // OMP Parallel
       for (CollisionObject *cObj: *collision_objects) {
           cObj->collide(pM);
       }
   }
+  
 
   // TODO (Part 2): Constrain the changes to be such that the spring does not change
   // in length more than 10% per timestep [Provot 1995].
-  double dist, diff;
+#pragma omp parallel for                                                                        // OMP Parallel
   for (Spring &spring: springs) {
       if (spring.pm_a->pinned && spring.pm_b->pinned) { continue; }
-      dist = (spring.pm_a->position - spring.pm_b->position).norm();
-      diff = dist - spring.rest_length * spring.max_rest_length_coefficient;
+      double dist = (spring.pm_a->position - spring.pm_b->position).norm();
+      double diff = dist - spring.rest_length * spring.max_rest_length_coefficient;
       if (diff > 0) {
           Vector3D direction = (spring.pm_b->position - spring.pm_a->position).unit();
           if (spring.pm_a->pinned && !spring.pm_b->pinned) {
@@ -254,7 +365,6 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
           }
       }
   }
-  // cout << "time: " << std::clock() - start << endl;
 }
 
 void Cloth::build_spatial_map() {
@@ -264,11 +374,13 @@ void Cloth::build_spatial_map() {
   map.clear();
 
   // TODO (Part 4): Build a spatial map out of all of the point masses.
+#pragma omp parallel for                                                                        // OMP Parallel
   for (PointMass &pM : point_masses) {
       float key = hash_position(pM.position);
       if (map.find(key) == map.end()) {     // the key not found
         map[key] = new vector<PointMass*>();
       }
+#pragma omp critical                                                                            // OMP Parallel critical
       map.at(key)->push_back(&pM);
   }
 }
@@ -278,7 +390,6 @@ void Cloth::self_collide(PointMass& pm, double simulation_steps) {
     float thick = 2 * thickness;
     int counter = 0;
     Vector3D avgCorr = 0;
-
     for (PointMass* cPm : *map.at(hash_position(pm.position))) {
         Vector3D vec = pm.position - cPm->position;
         float dist = vec.norm();
@@ -297,12 +408,8 @@ float Cloth::hash_position(Vector3D pos) {
   float w = 3 * width / num_width_points;
   float h = 3 * height / num_height_points;
   float t = max(w, h);
-
-  float ww = floor(pos.x / w);
-  float hh = floor(pos.y / h);
-  float tt = floor(pos.z / t);
   
-  return pow(2, ww) * pow(3, hh) * pow(5, tt);
+  return pow(2, floor(pos.x / w)) * pow(3, floor(pos.y / h)) * pow(5, floor(pos.z / t));
   //return 0.f; 
 }
 
