@@ -24,6 +24,7 @@ public:
   void loadClothParameters(ClothParameters *cp);
   void loadCollisionObjects(vector<CollisionObject *> *objects);
   virtual bool isAlive();
+  virtual bool isPaused();
   virtual void drawContents();
 
   // Screen events

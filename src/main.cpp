@@ -19,6 +19,7 @@
 #include "clothSimulator.h"
 #include "json.hpp"
 #include "misc/file_utils.h"
+#include <chrono>
 
 typedef uint32_t gid_t;
 
@@ -147,6 +148,7 @@ void usageError(const char *binaryName) {
   printf("                     Automatically searched for by default.\n");
   printf("  -a     <INT>       Sphere vertices latitude direction.\n");
   printf("  -o     <INT>       Sphere vertices longitude direction.\n");
+  printf("  -t     <INT>       Number of steps you want to time the simulation for.\n");
   printf("\n");
   exit(-1);
 }
@@ -404,11 +406,12 @@ int main(int argc, char **argv) {
   
   int sphere_num_lat = 40;
   int sphere_num_lon = 40;
+  int timing_steps = -1;
   
   std::string file_to_load_from;
   bool file_specified = false;
   
-  while ((c = getopt (argc, argv, "f:r:a:o:")) != -1) {
+  while ((c = getopt (argc, argv, "f:r:a:o:t:")) != -1) {
     switch (c) {
       case 'f': {
         file_to_load_from = optarg;
@@ -438,6 +441,15 @@ int main(int argc, char **argv) {
         }
         sphere_num_lon = arg_int;
         break;
+      }
+      // Final project: use the -t flag to time the program for a specific number of steps
+      case 't': {
+          int arg_int = atoi(optarg);
+          if (arg_int < 1) {
+              arg_int = 100;
+          }
+          timing_steps = arg_int;
+          break;
       }
       default: {
         usageError(argv[0]);
@@ -489,14 +501,22 @@ int main(int argc, char **argv) {
 
   setGLFWCallbacks();
 
-  while (!glfwWindowShouldClose(window)) {
+  // Begin timer
+  int counter = 0, stepLength = 0;
+  auto startTotal = chrono::steady_clock::now();
+  while (!glfwWindowShouldClose(window) && counter != timing_steps) {
     glfwPollEvents();
 
     glClearColor(0.25f, 0.25f, 0.25f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    app->drawContents();
-
+    auto startStep = chrono::steady_clock::now();
+    app->drawContents();  // Simulate and draw a single frame
+    auto endStep = chrono::steady_clock::now();
+    if (!app->isPaused()) {     // only count frames that require physical simulation
+        stepLength += chrono::duration_cast<chrono::milliseconds>(endStep - startStep).count();
+        counter += 1;
+    }
     // Draw nanogui
     screen->drawContents();
     screen->drawWidgets();
@@ -507,6 +527,13 @@ int main(int argc, char **argv) {
       glfwSetWindowShouldClose(window, 1);
     }
   }
+
+  if (timing_steps > 0) {
+      auto endTotal = chrono::steady_clock::now();
+      auto duration = chrono::duration_cast<chrono::milliseconds>(endTotal - startTotal).count();
+      cout << "Total time (" << counter << " total steps): " << duration << " ms" << endl;
+  }
+  cout << "Average time to simulate one frame: " <<  ((float) stepLength) / counter << " ms" << endl;
 
   return 0;
 }
