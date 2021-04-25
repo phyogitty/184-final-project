@@ -238,26 +238,17 @@ void ClothSimulator::init() {
 
 bool ClothSimulator::isAlive() { return is_alive; }
 
-double sample[20];
+bool ClothSimulator::isPaused() { return is_paused; }
+
 void ClothSimulator::drawContents() {
   glEnable(GL_DEPTH_TEST);
 
   if (!is_paused) {
     vector<Vector3D> external_accelerations = {gravity};
 
-    for (int i = 1; i < 20; i++) { sample[i - 1] = sample[i]; }
-    std::clock_t start;
-    start = std::clock();
-
     for (int i = 0; i < simulation_steps; i++) {
       cloth->simulate(frames_per_sec, simulation_steps, cp, external_accelerations, collision_objects);
     }
-
-    sample[19] = std::clock() - start;
-    double avg = 0;
-    for (int i = 0; i < 20; i++) { avg += sample[i]; }
-    cout << "time: " << (int) (avg / 20.0) << endl;
-
   }
 
   // Bind the active shader
@@ -583,28 +574,28 @@ bool ClothSimulator::keyCallbackEvent(int key, int scancode, int action,
 
   if (action == GLFW_PRESS) {
     switch (key) {
-    case GLFW_KEY_ESCAPE:
-      is_alive = false;
-      break;
-    case 'r':
-    case 'R':
-      cloth->reset();
-      break;
-    case ' ':
-      resetCamera();
-      break;
-    case 'p':
-    case 'P':
-      is_paused = !is_paused;
-      break;
-    case 'n':
-    case 'N':
-      if (is_paused) {
-        is_paused = false;
-        drawContents();
-        is_paused = true;
-      }
-      break;
+        case GLFW_KEY_ESCAPE:
+            is_alive = false;
+            break;
+        case 'r':
+        case 'R':
+            cloth->reset();
+            break;
+        case ' ':
+            resetCamera();
+            break;
+        case 'p':
+        case 'P':
+            is_paused = !is_paused;
+            break;
+        case 'n':
+        case 'N':
+            if (is_paused) {
+                is_paused = false;
+                drawContents();
+                is_paused = true;
+            }
+            break;
     }
   }
 
