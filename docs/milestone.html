@@ -2,55 +2,126 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 
 <head>
-    <style>
-        body {
-            padding-top: 60px;
-            padding-bottom: 100px;
-            padding-left: 150px;
-            padding-right: 150px;
-            width: 1000px;
-            margin: auto;
-            text-align: left;
-            font-weight: 300;
-            font-family: 'Lexend', sans-serif;
-            color: #121212;
-            background-color: lightgray;
-        }
+  <style>
+    body {
+      padding-top: 60px;
+      padding-bottom: 100px;
+      /* padding-left: 120px;
+      padding-right: 120px; */
+      width: 1000px;
+      margin: auto;
+      text-align: left;
+      font-weight: 300;
+      font-family: 'Lexend', sans-serif;
+      color: #121212;
+      background-color: rgb(241, 191, 191);
+    }
 
-        .text-size {
-            font-size: 23px;
-        }
+    .text-size {
+      font-size: 18px;
+    }
 
-        h1,
-        h2,
-        h3,
-        h4 {
-            font-family: 'Lexend', sans-serif;
-        }
+    h1,
+    h2,
+    h3,
+    h4 {
+      font-family: 'Lexend', sans-serif;
+    }
 
-        .pad {
-            padding-left: 30px;
-        }
-    </style>
-    <title>CS184 Final Project</title>
-    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
-    <link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
-    <link rel="preconnect" href="https://fonts.gstatic.com">
-    <link href="https://fonts.googleapis.com/css2?family=Lexend&display=swap" rel="stylesheet">
+    .pad {
+      padding-left: 30px;
+    }
+  </style>
+  <title>CS184 Final Project</title>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Lexend&display=swap" rel="stylesheet">
 </head>
 
 
 <body>
 
-    <h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2021</h1>
-    <h1 align="middle">Project 5: Cloth Simulation using GPU shader / CUDA</h1>
-    <h2 align="middle">Team members: Phyo Khine, Behrooz Ebrazi, Mie Haga</h2>
+  <h2 align="middle">CS 184: Computer Graphics and Imaging, Spring 2021</h2>
+  <h2 align="middle">Milestone Status Report (Cloth Simulation Optimization)</strong></h1>
+    <h3 align="middle">Team members: Phyo Khine, Behrooz Ebrazi, Mie Haga, Frank Warren</h3>
 
-    <br><br>
+
 
     <div>
+      <p class="text-size"><u>Links:</u></p>
 
-        <!-- <h2 align="middle"><strong><u>Project Summary</u></strong></h2>
+      <!-- <h3 align="middle"><strong><u>Technical Approach</u></strong></h3> -->
+      <ul>
+
+        <li><a
+            href="https://docs.google.com/spreadsheets/d/1obXrej-MJC0yjljEhhqY585xIqLAXHC5HWFl_8MktLk/edit?usp=sharing">Data
+            Result From Using OpenMP Multithreading</a></li>
+        <li><a
+            href="https://docs.google.com/presentation/d/1-PQNHfxrVIOt6AMO2GjtLyL04Ri4xlLQPbNGKnDQUgM/edit#slide=id.p">Presentation
+            Slides Containing Cloth Simulation</a></li>
+      </ul>
+      <p class="text-size"><u>Report Summary: Technical Approach</u>
+      </p>
+      <p class="text-size">We are basing our final project on top of Project 4. We have started
+        implementing OpenMP to
+        speed up the simulation time. We began by refactoring some of the common processes/math operations inside the
+        for
+        loops, and by putting them outside the loop. Then, we used OpenMP pragma to parallelize almost all the for loops
+        that we used for the simulation. To successfully use OpenMP, we added a flag for OpenMP in CMakeList.txt. Then
+        we
+        implemented our own timer to allow us to quantify the speedup. We also modified the code to be able to specify
+        the
+        number of frames with -t tag in the command line. Using OpenMP, we saw that the simulation time improved by
+        approximately a factor of 3. We consider this significant progress on speeding up the simulation time. </p>
+
+      <p class="text-size">Aside from that, we began implementing different type of clothes. Different clothes have
+        different physical characteristics. That's why we tried to simulate these differences in the parameters of our
+        clothes. Hence, we changed some parameters specific for each spring. Each spring has its own coefficient,
+        maximum
+        length, and bending coefficient. As a default, they have the amount the same as project 4. Also, we manipulate
+        the
+        point masses' mass for each type of clothes. With this result, we were able to design 3 types of clothes. In all
+        three types of clothing, we increased the weight of each item 10 times to make the weight of the clothing
+        heavier
+        so that its behavior is closer to the real fabric.
+      </p>
+
+      <p class="text-size">In the first type of cloth, we change to half the maximum length of the bending spring for
+        every 6-point mass in height and width directions. In contrast, we double this parameter for one spring between
+        each pair of them because the cloth will not be tight a lot. Also, for these longer bending springs, we decrease
+        the spring coefficient more than usual because we need them to be looser in the cloth. As a result, the cloth
+        will
+        be bumpy in some small square areas, and it always keeps its form in different conditions.</p>
+      <p class="text-size">In the second type of cloth, we change to 0.7 the maximum length of the bending spring for
+        every 6-point mass in horizontal directions. It causes the cloth to have some wrinkles in the vertical
+        direction.
+        It is like a cloth that we have folded and ironed. To prevent the fabric from shrinking too much, we tripled the
+        maximum length of the structural-type spring in some places horizontally and made the spring coefficient 10
+        times
+        weaker. In this type, we manipulate both structural and bending spring types.</p>
+      <p class="text-size">The third type of cloth is fancier. It is wavy in horizontal, but it is straight or changes
+        the
+        wave direction when more mass falls on it. We reach this type with a trick. First, we find each bending spring
+        that has a sixth position in vertical and horizontal. Then, if it is a vertical spring, we decrease its max
+        length
+        to 0.8 of the default. ​It causes the cloth to be wavy but not forced in all places.</p>
+      <p class="text-size"> We attempted to integrate SIMD to some of the loops in a simulation method. However,
+        because of the data structures that we are using in project 4 base code and the complexities, we saw the
+        challenge
+        and risk for applying SIMD. So, here is our updated work plan:</p>
+      <ul>
+        <li>Implementing more precise self-collision and collision with an object</li>
+        <li>Simulate wind effect to the cloth</li>
+        <li>Finalize simulation of new types of cloths</li>
+        <li>If time permits, implementing more speed-up using more threads with GPU</li>
+      </ul>
+      <!-- <p class="text-size">Links and Resources:</p> -->
+
+      </p>
+
+
+      <!-- <h2 align="middle"><strong><u>Project Summary</u></strong></h2>
 <p class="text-size">Fabric behaves like both a solid and liquid, and simulation of fabric
   involves controlling the interaction between these two types of
   materials. We intend to simulate different fabric models by changing and
