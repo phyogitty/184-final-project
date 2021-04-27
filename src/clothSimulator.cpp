@@ -55,7 +55,7 @@ void load_cubemap(int frame_idx, GLuint handle, const std::vector<std::string>& 
     unsigned char* img_data = stbi_load(file_locs[side_idx].c_str(), &img_x, &img_y, &img_n, 3);
     glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + side_idx, 0, GL_RGB, img_x, img_y, 0, GL_RGB, GL_UNSIGNED_BYTE, img_data);
     stbi_image_free(img_data);
-    std::cout << "Side " << side_idx << " has dimensions " << img_x << ", " << img_y << std::endl;
+    // std::cout << "Side " << side_idx << " has dimensions " << img_x << ", " << img_y << std::endl;
 
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -77,10 +77,10 @@ void ClothSimulator::load_textures() {
   m_gl_texture_3_size = load_texture(3, m_gl_texture_3, (m_project_root + "/textures/texture_3.png").c_str());
   m_gl_texture_4_size = load_texture(4, m_gl_texture_4, (m_project_root + "/textures/texture_4.png").c_str());
   
-  std::cout << "Texture 1 loaded with size: " << m_gl_texture_1_size << std::endl;
-  std::cout << "Texture 2 loaded with size: " << m_gl_texture_2_size << std::endl;
-  std::cout << "Texture 3 loaded with size: " << m_gl_texture_3_size << std::endl;
-  std::cout << "Texture 4 loaded with size: " << m_gl_texture_4_size << std::endl;
+  // std::cout << "Texture 1 loaded with size: " << m_gl_texture_1_size << std::endl;
+  // std::cout << "Texture 2 loaded with size: " << m_gl_texture_2_size << std::endl;
+  // std::cout << "Texture 3 loaded with size: " << m_gl_texture_3_size << std::endl;
+  // std::cout << "Texture 4 loaded with size: " << m_gl_texture_4_size << std::endl;
   
   std::vector<std::string> cubemap_fnames = {
     m_project_root + "/textures/cube/posx.jpg",
@@ -92,14 +92,14 @@ void ClothSimulator::load_textures() {
   };
   
   load_cubemap(5, m_gl_cubemap_tex, cubemap_fnames);
-  std::cout << "Loaded cubemap texture" << std::endl;
+  // std::cout << "Loaded cubemap texture" << std::endl;
 }
 
 void ClothSimulator::load_shaders() {
   std::set<std::string> shader_folder_contents;
   bool success = FileUtils::list_files_in_directory(m_project_root + "/shaders", shader_folder_contents);
   if (!success) {
-    std::cout << "Error: Could not find the shaders folder!" << std::endl;
+    // std::cout << "Error: Could not find the shaders folder!" << std::endl;
   }
   
   std::string std_vert_shader = m_project_root + "/shaders/Default.vert";
@@ -111,11 +111,11 @@ void ClothSimulator::load_shaders() {
     FileUtils::split_filename(shader_fname, shader_name, file_extension);
     
     if (file_extension != "frag") {
-      std::cout << "Skipping non-shader file: " << shader_fname << std::endl;
+      // std::cout << "Skipping non-shader file: " << shader_fname << std::endl;
       continue;
     }
     
-    std::cout << "Found shader file: " << shader_fname << std::endl;
+    // std::cout << "Found shader file: " << shader_fname << std::endl;
     
     // Check if there is a proper .vert shader or not for it
     std::string vert_shader = std_vert_shader;
@@ -132,13 +132,13 @@ void ClothSimulator::load_shaders() {
     ShaderTypeHint hint;
     if (shader_name == "Wireframe") {
       hint = ShaderTypeHint::WIREFRAME;
-      std::cout << "Type: Wireframe" << std::endl;
+      // std::cout << "Type: Wireframe" << std::endl;
     } else if (shader_name == "Normal") {
       hint = ShaderTypeHint::NORMALS;
-      std::cout << "Type: Normal" << std::endl;
+      // std::cout << "Type: Normal" << std::endl;
     } else {
       hint = ShaderTypeHint::PHONG;
-      std::cout << "Type: Custom" << std::endl;
+      // std::cout << "Type: Custom" << std::endl;
     }
     
     UserShader user_shader(shader_name, nanogui_shader, hint);

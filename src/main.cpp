@@ -472,7 +472,7 @@ int main(int argc, char **argv) {
     std::cout << "Error: Could not find required file \"shaders/Default.vert\" anywhere!" << std::endl;
     return -1;
   } else {
-    std::cout << "Loading files starting from: " << project_root << std::endl;
+    // std::cout << "Loading files starting from: " << project_root << std::endl;
   }
 
   if (!file_specified) { // No arguments, default initialization
@@ -542,12 +542,12 @@ int main(int argc, char **argv) {
   // Final project: timing
   if (timing_steps > 0) {
     auto endTotal = chrono::steady_clock::now();
-    auto duration = chrono::duration_cast<chrono::milliseconds>(endTotal - startTotal).count();
-    cout << endl << "Total time (" << counter << " total frames): " << duration << " ms" << endl;
+    auto duration = chrono::duration_cast<chrono::seconds>(endTotal - startTotal).count();
+    cout << endl << "Total time (" << counter << " total frames): " << duration << " s" << endl;
   }
   cout << "Average total time to simulate and display one frame (" << app->getSimulationSteps()
        << " timesteps): " <<  ((float) stepLength) / counter << " ms" << endl;
-  cout << "Average time to to simulate a single timestep: " << app->getAvgSimulationTime() << " ms" << endl;
+  cout << "Average time to to simulate a single timestep: " << app->getAvgSimulationTime() << " ms" << endl << endl;
 
   return 0;
 }
