@@ -15,6 +15,8 @@
 // Needed to generate stb_image binaries. Should only define in exactly one source file importing stb_image.h.
 #define STB_IMAGE_IMPLEMENTATION
 #include "misc/stb_image.h"
+#include <chrono>
+#include <omp.h>
 
 using namespace nanogui;
 using namespace std;
@@ -101,7 +103,7 @@ void ClothSimulator::load_shaders() {
   }
   
   std::string std_vert_shader = m_project_root + "/shaders/Default.vert";
-  
+
   for (const std::string& shader_fname : shader_folder_contents) {
     std::string file_extension;
     std::string shader_name;
@@ -244,10 +246,14 @@ void ClothSimulator::drawContents() {
   glEnable(GL_DEPTH_TEST);
 
   if (!is_paused) {
-    vector<Vector3D> external_accelerations = {gravity};
+    vector<Vector3D> external_accelerations = {gravity, wind}; // Final project: include wind as an external force
 
     for (int i = 0; i < simulation_steps; i++) {
+      auto startStep = chrono::steady_clock::now();
       cloth->simulate(frames_per_sec, simulation_steps, cp, external_accelerations, collision_objects);
+      auto endStep = chrono::steady_clock::now();
+      simulationTime += chrono::duration_cast<chrono::milliseconds>(endStep - startStep).count();
+      simulationSteps += 1;
     }
   }
 
@@ -305,9 +311,49 @@ void ClothSimulator::drawContents() {
     break;
   }
 
+  if (draw_Wind) {
+      drawWind(shader);
+  }
+
   for (CollisionObject *co : *collision_objects) {
     co->render(shader);
   }
+}
+
+// Draw the wind as a vector field
+void ClothSimulator::drawWind(GLShader &shader) {
+    // Number of vectors, their position, thir spacing, and their relative size
+    int   xVectors = 9.0,
+          yVectors = 7.0,
+          zVectors = 6.0;
+    double xBegin = -5.0,
+           yBegin = -5.0,
+           zBegin = -6.0;
+    double vectorSpacing = 3.0,
+           vectorSize = 1.0 / 15.0;
+
+    MatrixXf positions(4, xVectors * yVectors * zVectors * 2); // # of columns = # of wind vectors (x * y * z)
+
+    /* MatrixXf cone(4, 5); */ // Arrowheads for vectors
+    int si = 0;
+    for (int x = 0; x < xVectors ; x += 1) {
+        for (int y = 0; y < yVectors; y += 1) {
+            for (int z = 0; z < zVectors; z += 1) {
+                Vector3D tail = Vector3D(xBegin + (x * vectorSpacing), yBegin + (y * vectorSpacing), zBegin + (z * vectorSpacing)) * vectorSize;
+                Vector3D tip = tail + (wind * vectorSize);
+                positions.col(si) << tail.x, tail.y, tail.z, 1.0;
+                positions.col(si + 1) << tip.x, tip.y, tip.z, 1.0;
+                si += 2;
+                /* Adding arrowheads to wind vectors
+                cone.col(0) << tip.x, tip.y, tip.z, 1.0;
+                for (int t = 0; t < 5; t++) {
+                    cone.col()
+                }*/
+            }
+        }
+    }
+    shader.uploadAttrib("in_position", positions, false);
+    shader.drawArray(GL_LINES, 0, xVectors * yVectors * zVectors * 2);
 }
 
 void ClothSimulator::drawWireframe(GLShader &shader) {
@@ -368,6 +414,7 @@ void ClothSimulator::drawNormals(GLShader &shader) {
   MatrixXf positions(4, num_tris * 3);
   MatrixXf normals(4, num_tris * 3);
 
+  #pragma omp parallel for
   for (int i = 0; i < num_tris; i++) {
     Triangle *tri = cloth->clothMesh->triangles[i];
 
@@ -401,7 +448,7 @@ void ClothSimulator::drawPhong(GLShader &shader) {
   MatrixXf normals(4, num_tris * 3);
   MatrixXf uvs(2, num_tris * 3);
   MatrixXf tangents(4, num_tris * 3);
-
+  #pragma omp parallel for
   for (int i = 0; i < num_tris; i++) {
     Triangle *tri = cloth->clothMesh->triangles[i];
 
@@ -574,28 +621,28 @@ bool ClothSimulator::keyCallbackEvent(int key, int scancode, int action,
 
   if (action == GLFW_PRESS) {
     switch (key) {
-        case GLFW_KEY_ESCAPE:
-            is_alive = false;
-            break;
-        case 'r':
-        case 'R':
-            cloth->reset();
-            break;
-        case ' ':
-            resetCamera();
-            break;
-        case 'p':
-        case 'P':
-            is_paused = !is_paused;
-            break;
-        case 'n':
-        case 'N':
-            if (is_paused) {
-                is_paused = false;
-                drawContents();
-                is_paused = true;
-            }
-            break;
+    case GLFW_KEY_ESCAPE:
+      is_alive = false;
+      break;
+    case 'r':
+    case 'R':
+      cloth->reset();
+      break;
+    case ' ':
+      resetCamera();
+      break;
+    case 'p':
+    case 'P':
+      is_paused = !is_paused;
+      break;
+    case 'n':
+    case 'N':
+      if (is_paused) {
+        is_paused = false;
+        drawContents();
+        is_paused = true;
+      }
+      break;
     }
   }
 
@@ -627,7 +674,6 @@ void ClothSimulator::initGUI(Screen *screen) {
   window->setLayout(new GroupLayout(15, 6, 14, 5));
 
   // Spring types
-
   new Label(window, "Spring types", "sans-bold");
 
   {
@@ -796,7 +842,60 @@ void ClothSimulator::initGUI(Screen *screen) {
     fb->setSpinnable(true);
     fb->setCallback([this](float value) { gravity.z = value; });
   }
-  
+
+  // final project: adding GUI controls for wind
+  // wind is modelled as a uniform field of vectors pointing in the chosen direction
+  // the force of wind on each pointmass depends on the dot product between the surface normal
+  // and the wind vector
+  new Label(window, "Wind", "sans-bold");
+  {
+      Widget *panel = new Widget(window);
+      GridLayout *layout =
+              new GridLayout(Orientation::Horizontal, 2, Alignment::Middle, 5, 5);
+      layout->setColAlignment({Alignment::Maximum, Alignment::Fill});
+      layout->setSpacing(0, 10);
+      panel->setLayout(layout);
+
+      new Label(panel, "x :", "sans-bold");
+
+      FloatBox<double> *fb = new FloatBox<double>(panel);
+      fb->setEditable(true);
+      fb->setFixedSize(Vector2i(100, 20));
+      fb->setFontSize(14);
+      fb->setValue(wind.x);
+      fb->setUnits("m/s");
+      fb->setSpinnable(true);
+      fb->setCallback([this](float value) { wind.x = value; });
+
+      new Label(panel, "y :", "sans-bold");
+
+      fb = new FloatBox<double>(panel);
+      fb->setEditable(true);
+      fb->setFixedSize(Vector2i(100, 20));
+      fb->setFontSize(14);
+      fb->setValue(wind.y);
+      fb->setUnits("m/s");
+      fb->setSpinnable(true);
+      fb->setCallback([this](float value) { wind.y = value; });
+
+      new Label(panel, "z :", "sans-bold");
+
+      fb = new FloatBox<double>(panel);
+      fb->setEditable(true);
+      fb->setFixedSize(Vector2i(100, 20));
+      fb->setFontSize(14);
+      fb->setValue(wind.z);
+      fb->setUnits("m/s");
+      fb->setSpinnable(true);
+      fb->setCallback([this](float value) { wind.z = value; });
+
+      auto *cb = new CheckBox(panel);
+      // cb->setFixedSize(Vector2i(100, 20));
+      cb->setCaption("draw wind");
+      cb->setFontSize(14);
+      cb->setChecked(false);
+      cb->setCallback([this](bool val) { draw_Wind = val;});
+  }
   window = new Window(screen, "Appearance");
   window->setPosition(Vector2i(15, 15));
   window->setLayout(new GroupLayout(15, 6, 14, 5));

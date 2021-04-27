@@ -1,0 +1,24 @@
+{
+  "cloth": {
+    "damping": 0.2,
+    "density": 150.0,
+    "ks": 50000.0,
+    "enable_structural": true,
+    "enable_shearing": true,
+    "enable_bending": true,
+    "orientation": 1,
+    "width": 1.39,
+    "height": 0.73,
+    "num_width_points": 65,
+    "num_height_points": 35,
+    "thickness": 0.0095,
+    "pinned": [
+      [0, 0], [0, 34]
+    ],
+    "wind":  [ 
+        5, 
+        2, 
+        -3 
+    ]
+  }
+}
