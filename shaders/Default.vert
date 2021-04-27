@@ -2,8 +2,8 @@
 
 // Uniform variables are constant throughout the entire shader
 // execution. They are also read-only to enable parallelization.
-uniform mat4 u_model;
-uniform mat4 u_view_projection;
+uniform mat4 u_model;     // this matrix transforms a point from model space to world space
+uniform mat4 u_view_projection;   // transforms a point from world space to screen space
 
 // In a vertex shader, the "in" variables are read-only per-vertex 
 // properties. An example of this was shown in the rasterizer project, 

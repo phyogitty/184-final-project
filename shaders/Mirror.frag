@@ -12,12 +12,10 @@ in vec4 v_tangent;
 out vec4 out_color;
 
 void main() {
-  // YOUR CODE HERE
-  vec4 wo = normalize(vec4(u_cam_pos, 1) - v_position);
-  vec4 wi = normalize(v_normal - wo);
-
-  out_color = texture(u_texture_cubemap, vec3(wi));
-
-  // out_color = (vec4(1, 1, 1, 0) + v_normal) / 2;
+  // similar to ray tracing, we find the unit direction vector from the vertex to the camera
+  vec4 w_out = normalize(v_position - vec4(u_cam_pos, 0.0));
+  // then we calculate the direction which light has to originally come from to reflect at that vertex to our camera
+  vec4 w_in = normalize(w_out - (2 * dot(w_out, v_normal) * v_normal));
+  out_color = texture(u_texture_cubemap, vec3(w_in));
   out_color.a = 1;
 }
