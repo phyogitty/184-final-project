@@ -1,3 +1,7 @@
+# Manually Ignored
+cmake-build-debug/
+cmake-build-release/
+
 # Cruft
 .DS_Store
 
