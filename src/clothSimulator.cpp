@@ -724,17 +724,41 @@ void ClothSimulator::initGUI(Screen *screen) {
     fb->setSpinnable(true);
     fb->setCallback([this](float value) { cp->density = (double)(value * 10); });
 
-    new Label(panel, "ks :", "sans-bold");
+    new Label(panel, "structural ks :", "sans-bold");
 
     fb = new FloatBox<double>(panel);
     fb->setEditable(true);
     fb->setFixedSize(Vector2i(100, 20));
     fb->setFontSize(14);
-    fb->setValue(cp->ks);
+    fb->setValue(cp->structural_ks);
     fb->setUnits("N/m");
     fb->setSpinnable(true);
-    fb->setMinValue(0);
-    fb->setCallback([this](float value) { cp->ks = value; });
+    fb->setMinValue(-50000);
+    fb->setCallback([this](float value) { cp->structural_ks = value; });
+
+    new Label(panel, "shearing ks :", "sans-bold");
+
+    fb = new FloatBox<double>(panel);
+    fb->setEditable(true);
+    fb->setFixedSize(Vector2i(100, 20));
+    fb->setFontSize(14);
+    fb->setValue(cp->shearing_ks);
+    fb->setUnits("N/m");
+    fb->setSpinnable(true);
+    fb->setMinValue(-50000);
+    fb->setCallback([this](float value) { cp->shearing_ks = value; });
+
+    new Label(panel, "bending ks :", "sans-bold");
+
+    fb = new FloatBox<double>(panel);
+    fb->setEditable(true);
+    fb->setFixedSize(Vector2i(100, 20));
+    fb->setFontSize(14);
+    fb->setValue(cp->bending_ks);
+    fb->setUnits("N/m");
+    fb->setSpinnable(true);
+    fb->setMinValue(-50000);
+    fb->setCallback([this](float value) { cp->bending_ks = value; });
   }
 
   // Simulation constants
@@ -905,8 +929,6 @@ void ClothSimulator::initGUI(Screen *screen) {
   // Appearance
 
   {
-    
-    
     ComboBox *cb = new ComboBox(window, shaders_combobox_names);
     cb->setFontSize(14);
     cb->setCallback(

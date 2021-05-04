@@ -24,9 +24,10 @@ struct Spring {
       : pm_a(a), pm_b(b), rest_length(rest_length) {}
 
   double rest_length;
-  double max_rest_length_coefficient = 1.1;     // Final Project
-  double ks_coefficient = 1.0;                  // Final Project
-  double bending_coefficient = 0.2;             // Final Project
+  double max_rest_length_coefficient = 1.1;     // Final project
+  double ks_coefficient = 1.0;                  // Final project
+  double bending_coefficient = 0.2;             // Final project
+  Vector3D length;                              // Final project
 
   e_spring_type spring_type;
 

@@ -12,8 +12,6 @@
 
 using namespace std;
 
-int ClothType = 0;                                 // Final Project
-
 Cloth::Cloth(double width, double height, int num_width_points,
              int num_height_points, float thickness) {
   this->width = width;
@@ -35,12 +33,24 @@ Cloth::~Cloth() {
   }
 }
 
-// Final Project
+/*// Final Project
 void modify_Structural(Spring& spr, bool vertical, int x, int y) {
     switch (ClothType)
     {
     case 2:
         if (!vertical && ((x + 1) % 6 == 0 || (x + 4) % 6 == 0)) { spr.max_rest_length_coefficient = 3.0; spr.ks_coefficient = 0.1; }
+        break;
+    case 4:
+        spr.ks_coefficient = 10.0;
+        spr.max_rest_length_coefficient = 1.01;
+        break;
+    case 5:
+        spr.ks_coefficient = 10.0;
+        spr.max_rest_length_coefficient = 1.01;
+        break;
+    case 6:
+        spr.ks_coefficient = 0.01;
+        spr.max_rest_length_coefficient = 2.5;
         break;
     default:
         break;
@@ -50,6 +60,15 @@ void modify_Structural(Spring& spr, bool vertical, int x, int y) {
 void modify_Shearing(Spring& spr, bool vertical, int x, int y) {
     switch (ClothType)
     {
+    case 4:
+    case 5:
+        spr.ks_coefficient = 10.0;
+        spr.max_rest_length_coefficient = 1.01;
+        break;
+    case 6:
+        spr.ks_coefficient = 0.01;
+        spr.max_rest_length_coefficient = 2.5;
+        break;
     default:
         break;
     }
@@ -68,10 +87,20 @@ void modify_Bending(Spring& spr, bool vertical, int x, int y) {
     case 3:
         if (vertical && (x * y) % 6 == 0) { spr.max_rest_length_coefficient = 0.8; }
         break;
+    case 4:
+    case 5:
+        spr.bending_coefficient = 1.0;
+        spr.ks_coefficient = 10.0;
+        spr.max_rest_length_coefficient = 1.01;
+        break;
+    case 6:
+        spr.ks_coefficient = 0.01;
+        spr.max_rest_length_coefficient = 2.5;
+        break;
     default:
         break;
     }    
-}
+}*/
 
 void Cloth::buildGrid() {
   // TODO (Part 1): Build a grid of masses and springs.
@@ -126,32 +155,32 @@ void Cloth::buildGrid() {
 
           if (left) {
               Spring spr = Spring(&point_masses[y * this->num_width_points + x], &point_masses[y * this->num_width_points + x - 1], STRUCTURAL);
-              modify_Structural(spr, false, x, y);
+              // modify_Structural(spr, false, x, y);
               springs.push_back(spr);
           }
           if (top) {
               Spring spr = Spring(&point_masses[y * this->num_width_points + x], &point_masses[(y - 1) * this->num_width_points + x], STRUCTURAL);
-              modify_Structural(spr, true, x, y);
+              // modify_Structural(spr, true, x, y);
               springs.push_back(spr);
           }
           if (top && left) {
               Spring spr = Spring(&point_masses[y * this->num_width_points + x], &point_masses[(y - 1) * this->num_width_points + x - 1], SHEARING);
-              modify_Shearing(spr, false, x, y);
+              // modify_Shearing(spr, false, x, y);
               springs.push_back(spr);
           }
           if (top && right) {
               Spring spr = Spring(&point_masses[y * this->num_width_points + x], &point_masses[(y - 1) * this->num_width_points + x + 1], SHEARING);
-              modify_Shearing(spr, true, x, y);
+              // modify_Shearing(spr, true, x, y);
               springs.push_back(spr);
           }
           if (leftLeft) {
               Spring spr = Spring(&point_masses[y * this->num_width_points + x], &point_masses[y * this->num_width_points + x - 2], BENDING);
-              modify_Bending(spr, false, x, y);
+              // modify_Bending(spr, false, x, y);
               springs.push_back(spr);
           }
           if (topTop) {
               Spring spr = Spring(&point_masses[y * this->num_width_points + x], &point_masses[(y - 2) * this->num_width_points + x], BENDING);
-              modify_Bending(spr, true, x, y);
+              // modify_Bending(spr, true, x, y);
               springs.push_back(spr);
           }          
       }
@@ -170,35 +199,45 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
   double stokesCoefficients = 6.0 * PI * pointMassRadius * airViscosity;
   Vector3D stokesDrag = 0.0;
 
-  // Final Project
+  /*// Final Project
   size_t limit_i;
   switch (ClothType)
   {
   case 1:
-      mass = mass * 10;
-      break;
   case 2:
       mass = mass * 10;
       break;
   case 3:
       mass = mass * 15;
       break;
+  case 4:
+  case 5:
+      mass = mass * 20;
+      break;
+  case 6:
+      mass = mass * 50;
+      break;
   default:
       break;
-  }
+  }*/
 
   // TODO (Part 2): Compute total force acting on each point mass.
   Vector3D f = 0;
-  for (Vector3D a: external_accelerations) { f += mass * a; }
+  f += mass * external_accelerations[0];
   
   /**/
+  int counter = 0;
   #pragma omp parallel for private(stokesDrag)    // stokesDrag needs to be private to each thread to avoid data race
   for (PointMass &p : point_masses) {
+      // TODO: make the edges of the cloth more/less affected by wind compared to the center
+      // int center = (num_width_points * num_height_points * - 1) / 2;
+      // float areaCoefficient;
       if (!(external_accelerations[1] == Vector3D(0, 0, 0))) {   // Skip the stokesDrag calculation if there's no wind
           stokesDrag = stokesCoefficients * (external_accelerations[1] - p.velocity(delta_t)) * abs(dot(p.normal(), external_accelerations[1]));   // Stokes drag equation for particles
       }
       p.forces = gravity + stokesDrag;
       // TODO: need to add check for if cloth is behind object
+      counter += 1;
   }
   /**/
 
@@ -218,17 +257,18 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
       /**/
   #pragma omp parallel for                                                                        // OMP Parallel
   for (Spring& spring : springs) {
-      if (spring.spring_type == STRUCTURAL && cp->enable_structural_constraints ||
-          spring.spring_type == SHEARING && cp->enable_shearing_constraints ||
-          spring.spring_type == BENDING && cp->enable_bending_constraints) {
-          Vector3D springVect = spring.pm_a->position - spring.pm_b->position;
-          // Hook's law (spring force = spring constant * (distance from each end - rest length of spring)
-          Vector3D F_s = cp->ks * springVect.unit() * (springVect.norm() - spring.rest_length);
-          if (spring.spring_type == BENDING)
-              F_s *= 0.2; // Bending springs should be weaker
-          spring.pm_a->forces -= F_s;
-          spring.pm_b->forces += F_s;
+      Vector3D F_s = Vector3D(0, 0, 0);
+      Vector3D springVect = spring.pm_a->position - spring.pm_b->position;
+      // Hook's law (spring force = spring constant * (distance from each end - rest length of spring)
+      if (spring.spring_type == STRUCTURAL && cp->enable_structural_constraints) {
+          F_s = cp->structural_ks * springVect.unit() * (springVect.norm() - spring.rest_length);
+      } else if (spring.spring_type == SHEARING && cp->enable_shearing_constraints) {
+          F_s = cp->shearing_ks * springVect.unit() * (springVect.norm() - spring.rest_length);
+      } else if (spring.spring_type == BENDING && cp->enable_shearing_constraints) {
+          F_s = cp->bending_ks * springVect.unit() * (springVect.norm() - spring.rest_length);
       }
+      spring.pm_a->forces -= F_s;
+      spring.pm_b->forces += F_s;
   }
       /**/
 

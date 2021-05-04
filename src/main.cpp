@@ -261,7 +261,7 @@ bool loadObjectsFromFile(string filename, Cloth *cloth, ClothParameters *cp, vec
 
       // Cloth parameters
       bool enable_structural_constraints, enable_shearing_constraints, enable_bending_constraints;
-      double damping, density, ks;
+      double damping, density, ks, structural_ks, shearing_ks, bending_ks;
 
       auto it_enable_structural = object.find("enable_structural");
       if (it_enable_structural != object.end()) {
@@ -305,12 +305,16 @@ bool loadObjectsFromFile(string filename, Cloth *cloth, ClothParameters *cp, vec
         incompleteObjectError("cloth", "ks");
       }
 
+
       cp->enable_structural_constraints = enable_structural_constraints;
       cp->enable_shearing_constraints = enable_shearing_constraints;
       cp->enable_bending_constraints = enable_bending_constraints;
       cp->density = density;
       cp->damping = damping;
       cp->ks = ks;
+      cp->structural_ks = ks;
+      cp->shearing_ks = ks;
+      cp->bending_ks = 0.2 * ks;
     } else if (key == SPHERE) {
       Vector3D origin;
       double radius, friction;
@@ -512,8 +516,8 @@ int main(int argc, char **argv) {
   setGLFWCallbacks();
 
   // Begin timer
-  int counter = 0, stepLength = 0;
-  auto startTotal = chrono::steady_clock::now();
+  int counter = 0;
+  chrono::milliseconds total;
 
   while (!glfwWindowShouldClose(window) && counter != timing_steps) {
     glfwPollEvents();
@@ -525,7 +529,7 @@ int main(int argc, char **argv) {
     app->drawContents();  // Simulate and draw a single frame
     auto endStep = chrono::steady_clock::now();
     if (!app->isPaused()) {     // only count frames that require physical simulation
-        stepLength += chrono::duration_cast<chrono::milliseconds>(endStep - startStep).count();
+        total += chrono::duration_cast<chrono::milliseconds>(endStep - startStep);
         counter += 1;
     }
 
@@ -542,11 +546,11 @@ int main(int argc, char **argv) {
 
   if (timing_steps > 0) {
       auto endTotal = chrono::steady_clock::now();
-      auto duration = chrono::duration_cast<chrono::seconds>(endTotal - startTotal).count();
-      cout << endl << "Total time (" << counter << " total frames): " << duration << " s" << endl;
+      cout << endl << "Total time (" << counter << " total frames): "
+           << total.count() / 1000.0 << " s" << endl;
   }
     cout << "Average total time to simulate and display one frame (" << app->getSimulationSteps()
-         << " timesteps): " <<  ((float) stepLength) / counter << " ms" << endl;
+         << " timesteps per frame): " <<  ((float) total.count()) / counter << " ms" << endl;
     cout << "Average time to to simulate a single timestep: " << app->getAvgSimulationTime() << " ms" << endl << endl;
 
   return 0;
