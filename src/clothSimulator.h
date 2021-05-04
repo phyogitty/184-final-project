@@ -36,8 +36,14 @@ public:
   virtual bool scrollCallbackEvent(double x, double y);
   virtual bool resizeCallbackEvent(int width, int height);
 
+  // Final project timing and functions
+  double getAvgSimulationTime() const { return simulationTime / simulationSteps; }
+  double getSimulationSteps() const { return simulation_steps; }
+  void setWind(const Vector3D& windVelocity) { wind = windVelocity; }
+
 private:
   virtual void initGUI(Screen *screen);
+  void drawWind(GLShader &shader);
   void drawWireframe(GLShader &shader);
   void drawNormals(GLShader &shader);
   void drawPhong(GLShader &shader);
@@ -61,6 +67,13 @@ private:
   int simulation_steps = 30;
 
   CGL::Vector3D gravity = CGL::Vector3D(0, -9.8, 0);
+
+  // Final project
+  CGL::Vector3D wind = CGL::Vector3D(0, 0, 0);
+  bool draw_Wind = false;
+  double simulationTime = 0.0;
+  int simulationSteps = 0;
+
   nanogui::Color color = nanogui::Color(1.0f, 1.0f, 1.0f, 1.0f);
 
   Cloth *cloth;

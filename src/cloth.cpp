@@ -164,6 +164,11 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
                      vector<CollisionObject *> *collision_objects) {
   double mass = width * height * cp->density / num_width_points / num_height_points;
   double delta_t = 1.0f / frames_per_sec / simulation_steps;
+  double pointMassRadius = width * height / (num_width_points + num_height_points) / 2.0;     // cm
+  Vector3D gravity = mass * external_accelerations[0];                                        // g*m/(s^2)
+  double airViscosity = 1.849;  // g/(cm*s)
+  double stokesCoefficients = 6.0 * PI * pointMassRadius * airViscosity;
+  Vector3D stokesDrag = 0.0;
 
   // Final Project
   size_t limit_i;
@@ -187,9 +192,13 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
   for (Vector3D a: external_accelerations) { f += mass * a; }
   
   /**/
-#pragma omp parallel for                                                                        // OMP Parallel
-  for (PointMass& pm : point_masses) {
-      pm.forces = f;
+  #pragma omp parallel for private(stokesDrag)    // stokesDrag needs to be private to each thread to avoid data race
+  for (PointMass &p : point_masses) {
+      if (!(external_accelerations[1] == Vector3D(0, 0, 0))) {   // Skip the stokesDrag calculation if there's no wind
+          stokesDrag = stokesCoefficients * (external_accelerations[1] - p.velocity(delta_t)) * abs(dot(p.normal(), external_accelerations[1]));   // Stokes drag equation for particles
+      }
+      p.forces = gravity + stokesDrag;
+      // TODO: need to add check for if cloth is behind object
   }
   /**/
 
@@ -206,16 +215,21 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
       point_masses[i].forces = f;
   }
   */
-
-  if (cp->enable_bending_constraints || cp->enable_structural_constraints || cp->enable_shearing_constraints) {
       /**/
-#pragma omp parallel for                                                                        // OMP Parallel
-      for (Spring& spring : springs) {
-          double KS = (spring.spring_type == BENDING) ? cp->ks * spring.bending_coefficient : cp->ks;
-          Vector3D force = (KS * spring.ks_coefficient) * ((spring.pm_b->position - spring.pm_a->position).norm() - spring.rest_length) * (spring.pm_a->position - spring.pm_b->position).unit();
-          spring.pm_a->forces -= force;
-          spring.pm_b->forces += force;
+  #pragma omp parallel for                                                                        // OMP Parallel
+  for (Spring& spring : springs) {
+      if (spring.spring_type == STRUCTURAL && cp->enable_structural_constraints ||
+          spring.spring_type == SHEARING && cp->enable_shearing_constraints ||
+          spring.spring_type == BENDING && cp->enable_bending_constraints) {
+          Vector3D springVect = spring.pm_a->position - spring.pm_b->position;
+          // Hook's law (spring force = spring constant * (distance from each end - rest length of spring)
+          Vector3D F_s = cp->ks * springVect.unit() * (springVect.norm() - spring.rest_length);
+          if (spring.spring_type == BENDING)
+              F_s *= 0.2; // Bending springs should be weaker
+          spring.pm_a->forces -= F_s;
+          spring.pm_b->forces += F_s;
       }
+  }
       /**/
 
       /*
@@ -251,8 +265,6 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
       }
       */
 
-  }
-
   // TODO (Part 2): Use Verlet integration to compute new point mass positions
     double not_damp = 1 - cp->damping / 100.0;
     double delta_t2 = delta_t * delta_t;
@@ -260,12 +272,13 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
 
     //__m256 vec = _mm256_set_pd(0.0, 0.0, 0.0, 0.0);
 
-#pragma omp parallel for                                                                        // OMP Parallel
+    #pragma omp parallel for                                                                        // OMP Parallel
     for (PointMass& pm : point_masses) {
-        if (pm.pinned) { continue; }
-        Vector3D newPos = pm.position + (pm.position - pm.last_position) * not_damp + (pm.forces * delta_t2_mass);
-        pm.last_position = pm.position;
-        pm.position = newPos;
+        if (!pm.pinned) {
+            Vector3D newPos = pm.position + (pm.position - pm.last_position) * not_damp + (pm.forces * delta_t2_mass);
+            pm.last_position = pm.position;
+            pm.position = newPos;
+        }
     }
 
     /*
@@ -373,14 +386,12 @@ void Cloth::build_spatial_map() {
   }
   map.clear();
 
-  // TODO (Part 4): Build a spatial map out of all of the point masses.
-#pragma omp parallel for                                                                        // OMP Parallel
+  // TODO (Part 4): Build a spatial map out of all of the point masses.   // OMP Parallel
   for (PointMass &pM : point_masses) {
       float key = hash_position(pM.position);
       if (map.find(key) == map.end()) {     // the key not found
         map[key] = new vector<PointMass*>();
-      }
-#pragma omp critical                                                                            // OMP Parallel critical
+      }       // OMP Parallel critical
       map.at(key)->push_back(&pM);
   }
 }

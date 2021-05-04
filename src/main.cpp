@@ -20,6 +20,7 @@
 #include "json.hpp"
 #include "misc/file_utils.h"
 #include <chrono>
+#include <omp.h>
 
 typedef uint32_t gid_t;
 
@@ -68,7 +69,7 @@ void createGLContexts() {
   // Create a GLFWwindow object
   window = glfwCreateWindow(800, 800, "Cloth Simulator", nullptr, nullptr);
   if (window == nullptr) {
-    std::cout << "Failed to create GLFW window" << std::endl;
+    // std::cout << "Failed to create GLFW window" << std::endl;
     glfwTerminate();
     return;
   }
@@ -148,7 +149,7 @@ void usageError(const char *binaryName) {
   printf("                     Automatically searched for by default.\n");
   printf("  -a     <INT>       Sphere vertices latitude direction.\n");
   printf("  -o     <INT>       Sphere vertices longitude direction.\n");
-  printf("  -t     <INT>       Number of steps you want to time the simulation for.\n");
+  printf("  -t     <INT>       Number of frames you want to time the simulation for.\n");
   printf("\n");
   exit(-1);
 }
@@ -158,7 +159,8 @@ void incompleteObjectError(const char *object, const char *attribute) {
   exit(-1);
 }
 
-bool loadObjectsFromFile(string filename, Cloth *cloth, ClothParameters *cp, vector<CollisionObject *>* objects, int sphere_num_lat, int sphere_num_lon) {
+// Final project, I added a pointer to the wind velocity as an arg to this func
+bool loadObjectsFromFile(string filename, Cloth *cloth, ClothParameters *cp, vector<CollisionObject *>* objects, Vector3D *windVelocity, int sphere_num_lat, int sphere_num_lon) {
   // Read JSON from file
   ifstream i(filename);
   if (!i.good()) {
@@ -239,6 +241,14 @@ bool loadObjectsFromFile(string filename, Cloth *cloth, ClothParameters *cp, vec
           vector<int> point = pt;
           pinned.push_back(point);
         }
+      }
+
+      // Final project: the scene json file can also include wind velocity
+      // I included wind velocity as a property of the cloth in the json, it was easier than writing a new function
+      auto it_wind = object.find("wind");
+      if (it_wind != object.end()) {
+          vector<double> wind = *it_wind;
+          *windVelocity = Vector3D((double) wind[0], (double) wind[1], (double) wind[2]);
       }
 
       cloth->width = width;
@@ -421,7 +431,7 @@ int main(int argc, char **argv) {
       case 'r': {
         project_root = optarg;
         if (!is_valid_project_root(project_root)) {
-          std::cout << "Warn: Could not find required file \"shaders/Default.vert\" in specified project root: " << project_root << std::endl;
+          // std::cout << "Warn: Could not find required file \"shaders/Default.vert\" in specified project root: " << project_root << std::endl;
         }
         found_project_root = true;
         break;
@@ -462,7 +472,7 @@ int main(int argc, char **argv) {
     std::cout << "Error: Could not find required file \"shaders/Default.vert\" anywhere!" << std::endl;
     return -1;
   } else {
-    std::cout << "Loading files starting from: " << project_root << std::endl;
+    // std::cout << "Loading files starting from: " << project_root << std::endl;
   }
 
   if (!file_specified) { // No arguments, default initialization
@@ -471,8 +481,9 @@ int main(int argc, char **argv) {
     def_fname << "/scene/pinned2.json";
     file_to_load_from = def_fname.str();
   }
-  
-  bool success = loadObjectsFromFile(file_to_load_from, &cloth, &cp, &objects, sphere_num_lat, sphere_num_lon);
+
+  Vector3D windVelocity; // Final project: I use this variable because I'm too lazy to make a loadSettingsFromFile func
+  bool success = loadObjectsFromFile(file_to_load_from, &cloth, &cp, &objects, &windVelocity, sphere_num_lat, sphere_num_lon);
   if (!success) {
     std::cout << "Warn: Unable to load from file: " << file_to_load_from << std::endl;
   }
@@ -490,20 +501,20 @@ int main(int argc, char **argv) {
   app->loadCloth(&cloth);
   app->loadClothParameters(&cp);
   app->loadCollisionObjects(&objects);
+  app->setWind(windVelocity); // Final project: have to set wind after ClothSimulator is initialized
   app->init();
 
   // Call this after all the widgets have been defined
-
   screen->setVisible(true);
   screen->performLayout();
 
   // Attach callbacks to the GLFW window
-
   setGLFWCallbacks();
 
   // Begin timer
   int counter = 0, stepLength = 0;
   auto startTotal = chrono::steady_clock::now();
+
   while (!glfwWindowShouldClose(window) && counter != timing_steps) {
     glfwPollEvents();
 
@@ -517,6 +528,7 @@ int main(int argc, char **argv) {
         stepLength += chrono::duration_cast<chrono::milliseconds>(endStep - startStep).count();
         counter += 1;
     }
+
     // Draw nanogui
     screen->drawContents();
     screen->drawWidgets();
@@ -530,10 +542,12 @@ int main(int argc, char **argv) {
 
   if (timing_steps > 0) {
       auto endTotal = chrono::steady_clock::now();
-      auto duration = chrono::duration_cast<chrono::milliseconds>(endTotal - startTotal).count();
-      cout << "Total time (" << counter << " total steps): " << duration << " ms" << endl;
+      auto duration = chrono::duration_cast<chrono::seconds>(endTotal - startTotal).count();
+      cout << endl << "Total time (" << counter << " total frames): " << duration << " s" << endl;
   }
-  cout << "Average time to simulate one frame: " <<  ((float) stepLength) / counter << " ms" << endl;
+    cout << "Average total time to simulate and display one frame (" << app->getSimulationSteps()
+         << " timesteps): " <<  ((float) stepLength) / counter << " ms" << endl;
+    cout << "Average time to to simulate a single timestep: " << app->getAvgSimulationTime() << " ms" << endl << endl;
 
   return 0;
 }
