@@ -21,11 +21,13 @@ struct ClothParameters {
   ClothParameters(bool enable_structural_constraints,
                   bool enable_shearing_constraints,
                   bool enable_bending_constraints, double damping,
-                  double density, double ks)
+                  double density, double ks,
+                  double structural_ks, double shearing_ks, double bending_ks)
       : enable_structural_constraints(enable_structural_constraints),
         enable_shearing_constraints(enable_shearing_constraints),
         enable_bending_constraints(enable_bending_constraints),
-        damping(damping), density(density), ks(ks) {}
+        damping(damping), density(density), ks(ks),
+        structural_ks(structural_ks), shearing_ks(shearing_ks), bending_ks(bending_ks) {}
   ~ClothParameters() {}
 
   // Global simulation parameters
@@ -39,6 +41,7 @@ struct ClothParameters {
   // Mass-spring parameters
   double density;
   double ks;
+  double structural_ks, shearing_ks, bending_ks;
 };
 
 struct Cloth {

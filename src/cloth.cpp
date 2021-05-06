@@ -118,29 +118,32 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
 
     // Apply spring forces to each point mass using Hooke's law
 #pragma omp parallel for
-    for (Spring &spring : springs) {
-        if (spring.spring_type == STRUCTURAL && cp->enable_structural_constraints ||
-            spring.spring_type == SHEARING && cp->enable_shearing_constraints ||
-            spring.spring_type == BENDING && cp->enable_bending_constraints) {
-            Vector3D springVect = spring.pm_a->position - spring.pm_b->position;
-            // Hook's law (spring force = spring constant * (distance from each end - rest length of spring)
-            Vector3D F_s = cp->ks * springVect.unit() * (springVect.norm() - spring.rest_length);
-            if (spring.spring_type == BENDING)
-                F_s *= 0.2; // Bending springs should be weaker
-            spring.pm_a->forces -= F_s;
-            spring.pm_b->forces += F_s;
-        }
+for (Spring &spring : springs) {
+    Vector3D F_s = Vector3D(0, 0, 0);
+    Vector3D springVect = spring.pm_a->position - spring.pm_b->position;
+    // Hook's law (spring force = spring constant * (distance from each end - rest length of spring)
+    if (spring.spring_type == STRUCTURAL && cp->enable_structural_constraints) {
+        F_s = cp->structural_ks * springVect.unit() * (springVect.norm() - spring.rest_length);
+    }
+    else if (spring.spring_type == SHEARING && cp->enable_shearing_constraints) {
+        F_s = cp->shearing_ks * springVect.unit() * (springVect.norm() - spring.rest_length);
+    }
+    else if (spring.spring_type == BENDING && cp->enable_shearing_constraints) {
+        F_s = cp->bending_ks * springVect.unit() * (springVect.norm() - spring.rest_length);
+    }
+        spring.pm_a->forces -= F_s;
+        spring.pm_b->forces += F_s;
     }
 
     // Apply Verlet integration/Euler forward timestep to each point mass
 #pragma omp parallel for
-    for (PointMass &p : point_masses) {
-        if (!p.pinned) {
-            Vector3D temp = p.position;
-            p.position = p.position + (1 - cp->damping/100.0) * (p.position - p.last_position) + (p.forces / mass) * delta_t * delta_t;
-            p.last_position = temp;
-        }
+for (PointMass &p : point_masses) {
+    if (!p.pinned) {
+        Vector3D temp = p.position;
+        p.position = p.position + (1 - cp->damping/100.0) * (p.position - p.last_position) + (p.forces / mass) * delta_t * delta_t;
+        p.last_position = temp;
     }
+}
 
     // Organize our masses into a spatial map (hashmap) for efficient access
     build_spatial_map();

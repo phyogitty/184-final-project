@@ -39,12 +39,26 @@ void main() {
   vec3 normal = normalize(vec3(-dU, -dV, 1.0));
   vec4 displacedModelSpaceNormal = vec4(TBN * normal, 1.0);
 
-  // parameters/coefficients governing light reflection
+ /* parameters/coefficients governing light reflection
+
   vec4 i_a = vec4(1.0);
   vec4 k_a = vec4(0.1);
   vec4 k_d = u_color;
   vec4 k_s = vec4(0.5);
   int p = 100;
+
+  */
+
+  // Phong
+  // float p = 20.0;
+  // float k_a = 0.3, k_d = .8, k_s = 0.5;
+  // vec4 i_a = vec4(0.3, 0.125, 0.0, 1.0);
+  //float p = 20.0;						// jean
+  //float k_a = 0.5, k_d = .5, k_s = 0.05;	// jean
+  //vec4 i_a = vec4(0.082, 0.375, 0.7383, 1.0);	// jean
+  float p = 2.0;							// flowers
+  float k_a = 0.6, k_d = .4, k_s = 0.1;		// flowers
+  vec4 i_a = vec4(1.0, 0.72, 0.77, 1.0);			// flowers
 
   vec4 cam_pos = vec4(u_cam_pos, 1.0);
   vec4 light_pos = vec4(u_light_pos, 1);

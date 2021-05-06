@@ -136,7 +136,7 @@ if(WIN32)
         set(CMAKE_BUILD_TYPE Debug)
     else(BUILD_DEBUG)
         set(CMAKE_BUILD_TYPE Release)
-        #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS} /openmp") # added /openmp
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS} /openmp") # added /openmp
     endif(BUILD_DEBUG)
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MSVC_CXX_FLAGS}")

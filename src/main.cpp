@@ -261,7 +261,7 @@ bool loadObjectsFromFile(string filename, Cloth *cloth, ClothParameters *cp, vec
 
       // Cloth parameters
       bool enable_structural_constraints, enable_shearing_constraints, enable_bending_constraints;
-      double damping, density, ks;
+      double damping, density, ks, structural_ks, shearing_ks, bending_ks;
 
       auto it_enable_structural = object.find("enable_structural");
       if (it_enable_structural != object.end()) {
@@ -311,6 +311,9 @@ bool loadObjectsFromFile(string filename, Cloth *cloth, ClothParameters *cp, vec
       cp->density = density;
       cp->damping = damping;
       cp->ks = ks;
+      cp->structural_ks = ks;
+      cp->shearing_ks = ks;
+      cp->bending_ks = 0.2 * ks;
     } else if (key == SPHERE) {
       Vector3D origin;
       double radius, friction;
@@ -431,7 +434,7 @@ int main(int argc, char **argv) {
       case 'r': {
         project_root = optarg;
         if (!is_valid_project_root(project_root)) {
-          std::cout << "Warn: Could not find required file \"shaders/Default.vert\" in specified project root: " << project_root << std::endl;
+          // std::cout << "Warn: Could not find required file \"shaders/Default.vert\" in specified project root: " << project_root << std::endl;
         }
         found_project_root = true;
         break;

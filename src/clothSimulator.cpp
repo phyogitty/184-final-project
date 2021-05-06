@@ -722,17 +722,41 @@ void ClothSimulator::initGUI(Screen *screen) {
     fb->setSpinnable(true);
     fb->setCallback([this](float value) { cp->density = (double)(value * 10); });
 
-    new Label(panel, "ks :", "sans-bold");
+    new Label(panel, "structural ks :", "sans-bold");
 
     fb = new FloatBox<double>(panel);
     fb->setEditable(true);
     fb->setFixedSize(Vector2i(100, 20));
     fb->setFontSize(14);
-    fb->setValue(cp->ks);
+    fb->setValue(cp->structural_ks);
     fb->setUnits("N/m");
     fb->setSpinnable(true);
-    fb->setMinValue(0);
-    fb->setCallback([this](float value) { cp->ks = value; });
+    fb->setMinValue(-50000);
+    fb->setCallback([this](float value) { cp->structural_ks = value; });
+
+    new Label(panel, "shearing ks :", "sans-bold");
+
+    fb = new FloatBox<double>(panel);
+    fb->setEditable(true);
+    fb->setFixedSize(Vector2i(100, 20));
+    fb->setFontSize(14);
+    fb->setValue(cp->shearing_ks);
+    fb->setUnits("N/m");
+    fb->setSpinnable(true);
+    fb->setMinValue(-50000);
+    fb->setCallback([this](float value) { cp->shearing_ks = value; });
+
+    new Label(panel, "bending ks :", "sans-bold");
+
+    fb = new FloatBox<double>(panel);
+    fb->setEditable(true);
+    fb->setFixedSize(Vector2i(100, 20));
+    fb->setFontSize(14);
+    fb->setValue(cp->bending_ks);
+    fb->setUnits("N/m");
+    fb->setSpinnable(true);
+    fb->setMinValue(-50000);
+    fb->setCallback([this](float value) { cp->bending_ks = value; });
   }
 
   // Simulation constants
@@ -740,33 +764,33 @@ void ClothSimulator::initGUI(Screen *screen) {
   new Label(window, "Simulation", "sans-bold");
 
   {
-    Widget *panel = new Widget(window);
-    GridLayout *layout =
-        new GridLayout(Orientation::Horizontal, 2, Alignment::Middle, 5, 5);
-    layout->setColAlignment({Alignment::Maximum, Alignment::Fill});
-    layout->setSpacing(0, 10);
-    panel->setLayout(layout);
+      Widget* panel = new Widget(window);
+      GridLayout* layout =
+          new GridLayout(Orientation::Horizontal, 2, Alignment::Middle, 5, 5);
+      layout->setColAlignment({ Alignment::Maximum, Alignment::Fill });
+      layout->setSpacing(0, 10);
+      panel->setLayout(layout);
 
-    new Label(panel, "frames/s :", "sans-bold");
+      new Label(panel, "frames/s :", "sans-bold");
 
-    IntBox<int> *fsec = new IntBox<int>(panel);
-    fsec->setEditable(true);
-    fsec->setFixedSize(Vector2i(100, 20));
-    fsec->setFontSize(14);
-    fsec->setValue(frames_per_sec);
-    fsec->setSpinnable(true);
-    fsec->setCallback([this](int value) { frames_per_sec = value; });
+      IntBox<int>* fsec = new IntBox<int>(panel);
+      fsec->setEditable(true);
+      fsec->setFixedSize(Vector2i(100, 20));
+      fsec->setFontSize(14);
+      fsec->setValue(frames_per_sec);
+      fsec->setSpinnable(true);
+      fsec->setCallback([this](int value) { frames_per_sec = value; });
 
-    new Label(panel, "steps/frame :", "sans-bold");
+      new Label(panel, "steps/frame :", "sans-bold");
 
-    IntBox<int> *num_steps = new IntBox<int>(panel);
-    num_steps->setEditable(true);
-    num_steps->setFixedSize(Vector2i(100, 20));
-    num_steps->setFontSize(14);
-    num_steps->setValue(simulation_steps);
-    num_steps->setSpinnable(true);
-    num_steps->setMinValue(0);
-    num_steps->setCallback([this](int value) { simulation_steps = value; });
+      IntBox<int>* num_steps = new IntBox<int>(panel);
+      num_steps->setEditable(true);
+      num_steps->setFixedSize(Vector2i(100, 20));
+      num_steps->setFontSize(14);
+      num_steps->setValue(simulation_steps);
+      num_steps->setSpinnable(true);
+      num_steps->setMinValue(0);
+      num_steps->setCallback([this](int value) { simulation_steps = value; });
   }
 
   // Damping slider and textbox
@@ -774,27 +798,27 @@ void ClothSimulator::initGUI(Screen *screen) {
   new Label(window, "Damping", "sans-bold");
 
   {
-    Widget *panel = new Widget(window);
-    panel->setLayout(
-        new BoxLayout(Orientation::Horizontal, Alignment::Middle, 0, 5));
+      Widget* panel = new Widget(window);
+      panel->setLayout(
+          new BoxLayout(Orientation::Horizontal, Alignment::Middle, 0, 5));
 
-    Slider *slider = new Slider(panel);
-    slider->setValue(cp->damping);
-    slider->setFixedWidth(105);
+      Slider* slider = new Slider(panel);
+      slider->setValue(cp->damping);
+      slider->setFixedWidth(105);
 
-    TextBox *percentage = new TextBox(panel);
-    percentage->setFixedWidth(75);
-    percentage->setValue(to_string(cp->damping));
-    percentage->setUnits("%");
-    percentage->setFontSize(14);
+      TextBox* percentage = new TextBox(panel);
+      percentage->setFixedWidth(75);
+      percentage->setValue(to_string(cp->damping));
+      percentage->setUnits("%");
+      percentage->setFontSize(14);
 
-    slider->setCallback([percentage](float value) {
-      percentage->setValue(std::to_string(value));
-    });
-    slider->setFinalCallback([&](float value) {
-      cp->damping = (double)value;
-      // cout << "Final slider value: " << (int)(value * 100) << endl;
-    });
+      slider->setCallback([percentage](float value) {
+          percentage->setValue(std::to_string(value));
+          });
+      slider->setFinalCallback([&](float value) {
+          cp->damping = (double)value;
+          // cout << "Final slider value: " << (int)(value * 100) << endl;
+          });
   }
 
   // Gravity
@@ -802,45 +826,45 @@ void ClothSimulator::initGUI(Screen *screen) {
   new Label(window, "Gravity", "sans-bold");
 
   {
-    Widget *panel = new Widget(window);
-    GridLayout *layout =
-        new GridLayout(Orientation::Horizontal, 2, Alignment::Middle, 5, 5);
-    layout->setColAlignment({Alignment::Maximum, Alignment::Fill});
-    layout->setSpacing(0, 10);
-    panel->setLayout(layout);
+      Widget* panel = new Widget(window);
+      GridLayout* layout =
+          new GridLayout(Orientation::Horizontal, 2, Alignment::Middle, 5, 5);
+      layout->setColAlignment({ Alignment::Maximum, Alignment::Fill });
+      layout->setSpacing(0, 10);
+      panel->setLayout(layout);
 
-    new Label(panel, "x :", "sans-bold");
+      new Label(panel, "x :", "sans-bold");
 
-    FloatBox<double> *fb = new FloatBox<double>(panel);
-    fb->setEditable(true);
-    fb->setFixedSize(Vector2i(100, 20));
-    fb->setFontSize(14);
-    fb->setValue(gravity.x);
-    fb->setUnits("m/s^2");
-    fb->setSpinnable(true);
-    fb->setCallback([this](float value) { gravity.x = value; });
+      FloatBox<double>* fb = new FloatBox<double>(panel);
+      fb->setEditable(true);
+      fb->setFixedSize(Vector2i(100, 20));
+      fb->setFontSize(14);
+      fb->setValue(gravity.x);
+      fb->setUnits("m/s^2");
+      fb->setSpinnable(true);
+      fb->setCallback([this](float value) { gravity.x = value; });
 
-    new Label(panel, "y :", "sans-bold");
+      new Label(panel, "y :", "sans-bold");
 
-    fb = new FloatBox<double>(panel);
-    fb->setEditable(true);
-    fb->setFixedSize(Vector2i(100, 20));
-    fb->setFontSize(14);
-    fb->setValue(gravity.y);
-    fb->setUnits("m/s^2");
-    fb->setSpinnable(true);
-    fb->setCallback([this](float value) { gravity.y = value; });
+      fb = new FloatBox<double>(panel);
+      fb->setEditable(true);
+      fb->setFixedSize(Vector2i(100, 20));
+      fb->setFontSize(14);
+      fb->setValue(gravity.y);
+      fb->setUnits("m/s^2");
+      fb->setSpinnable(true);
+      fb->setCallback([this](float value) { gravity.y = value; });
 
-    new Label(panel, "z :", "sans-bold");
+      new Label(panel, "z :", "sans-bold");
 
-    fb = new FloatBox<double>(panel);
-    fb->setEditable(true);
-    fb->setFixedSize(Vector2i(100, 20));
-    fb->setFontSize(14);
-    fb->setValue(gravity.z);
-    fb->setUnits("m/s^2");
-    fb->setSpinnable(true);
-    fb->setCallback([this](float value) { gravity.z = value; });
+      fb = new FloatBox<double>(panel);
+      fb->setEditable(true);
+      fb->setFixedSize(Vector2i(100, 20));
+      fb->setFontSize(14);
+      fb->setValue(gravity.z);
+      fb->setUnits("m/s^2");
+      fb->setSpinnable(true);
+      fb->setCallback([this](float value) { gravity.z = value; });
   }
 
   // final project: adding GUI controls for wind
@@ -849,16 +873,16 @@ void ClothSimulator::initGUI(Screen *screen) {
   // and the wind vector
   new Label(window, "Wind", "sans-bold");
   {
-      Widget *panel = new Widget(window);
-      GridLayout *layout =
-              new GridLayout(Orientation::Horizontal, 2, Alignment::Middle, 5, 5);
-      layout->setColAlignment({Alignment::Maximum, Alignment::Fill});
+      Widget* panel = new Widget(window);
+      GridLayout* layout =
+          new GridLayout(Orientation::Horizontal, 2, Alignment::Middle, 5, 5);
+      layout->setColAlignment({ Alignment::Maximum, Alignment::Fill });
       layout->setSpacing(0, 10);
       panel->setLayout(layout);
 
       new Label(panel, "x :", "sans-bold");
 
-      FloatBox<double> *fb = new FloatBox<double>(panel);
+      FloatBox<double>* fb = new FloatBox<double>(panel);
       fb->setEditable(true);
       fb->setFixedSize(Vector2i(100, 20));
       fb->setFontSize(14);
@@ -889,12 +913,12 @@ void ClothSimulator::initGUI(Screen *screen) {
       fb->setSpinnable(true);
       fb->setCallback([this](float value) { wind.z = value; });
 
-      auto *cb = new CheckBox(panel);
+      auto* cb = new CheckBox(panel);
       // cb->setFixedSize(Vector2i(100, 20));
       cb->setCaption("draw wind");
       cb->setFontSize(14);
       cb->setChecked(false);
-      cb->setCallback([this](bool val) { draw_Wind = val;});
+      cb->setCallback([this](bool val) { draw_Wind = val; });
   }
   window = new Window(screen, "Appearance");
   window->setPosition(Vector2i(15, 15));
@@ -903,13 +927,11 @@ void ClothSimulator::initGUI(Screen *screen) {
   // Appearance
 
   {
-    
-    
-    ComboBox *cb = new ComboBox(window, shaders_combobox_names);
-    cb->setFontSize(14);
-    cb->setCallback(
-        [this, screen](int idx) { active_shader_idx = idx; });
-    cb->setSelectedIndex(active_shader_idx);
+      ComboBox* cb = new ComboBox(window, shaders_combobox_names);
+      cb->setFontSize(14);
+      cb->setCallback(
+          [this, screen](int idx) { active_shader_idx = idx; });
+      cb->setSelectedIndex(active_shader_idx);
   }
 
   // Shader Parameters
@@ -917,40 +939,40 @@ void ClothSimulator::initGUI(Screen *screen) {
   new Label(window, "Color", "sans-bold");
 
   {
-    ColorWheel *cw = new ColorWheel(window, color);
-    cw->setColor(this->color);
-    cw->setCallback(
-        [this](const nanogui::Color &color) { this->color = color; });
+      ColorWheel* cw = new ColorWheel(window, color);
+      cw->setColor(this->color);
+      cw->setCallback(
+          [this](const nanogui::Color& color) { this->color = color; });
   }
 
   new Label(window, "Parameters", "sans-bold");
 
   {
-    Widget *panel = new Widget(window);
-    GridLayout *layout =
-        new GridLayout(Orientation::Horizontal, 2, Alignment::Middle, 5, 5);
-    layout->setColAlignment({Alignment::Maximum, Alignment::Fill});
-    layout->setSpacing(0, 10);
-    panel->setLayout(layout);
+      Widget* panel = new Widget(window);
+      GridLayout* layout =
+          new GridLayout(Orientation::Horizontal, 2, Alignment::Middle, 5, 5);
+      layout->setColAlignment({ Alignment::Maximum, Alignment::Fill });
+      layout->setSpacing(0, 10);
+      panel->setLayout(layout);
 
-    new Label(panel, "Normal :", "sans-bold");
+      new Label(panel, "Normal :", "sans-bold");
 
-    FloatBox<double> *fb = new FloatBox<double>(panel);
-    fb->setEditable(true);
-    fb->setFixedSize(Vector2i(100, 20));
-    fb->setFontSize(14);
-    fb->setValue(this->m_normal_scaling);
-    fb->setSpinnable(true);
-    fb->setCallback([this](float value) { this->m_normal_scaling = value; });
+      FloatBox<double>* fb = new FloatBox<double>(panel);
+      fb->setEditable(true);
+      fb->setFixedSize(Vector2i(100, 20));
+      fb->setFontSize(14);
+      fb->setValue(this->m_normal_scaling);
+      fb->setSpinnable(true);
+      fb->setCallback([this](float value) { this->m_normal_scaling = value; });
 
-    new Label(panel, "Height :", "sans-bold");
+      new Label(panel, "Height :", "sans-bold");
 
-    fb = new FloatBox<double>(panel);
-    fb->setEditable(true);
-    fb->setFixedSize(Vector2i(100, 20));
-    fb->setFontSize(14);
-    fb->setValue(this->m_height_scaling);
-    fb->setSpinnable(true);
-    fb->setCallback([this](float value) { this->m_height_scaling = value; });
+      fb = new FloatBox<double>(panel);
+      fb->setEditable(true);
+      fb->setFixedSize(Vector2i(100, 20));
+      fb->setFontSize(14);
+      fb->setValue(this->m_height_scaling);
+      fb->setSpinnable(true);
+      fb->setCallback([this](float value) { this->m_height_scaling = value; });
   }
 }
