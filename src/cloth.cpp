@@ -107,50 +107,57 @@ void Cloth::simulate(double frames_per_sec, double simulation_steps, ClothParame
     double stokesCoefficients = 6.0 * PI * pointMassRadius * airViscosity;
     Vector3D stokesDrag = 0.0;
 
-#pragma omp parallel for private(stokesDrag)    // stokesDrag needs to be private to each thread to avoid data race
-    for (PointMass &p : point_masses) {
+    int p_size = point_masses.size(); // changed for loop for OpenMP2.0 (MSVC only supports this)
+    #pragma omp parallel for private(stokesDrag)    // stokesDrag needs to be private to each thread to avoid data race
+    for (int i = 0; i < p_size; i++) {
+        auto& p = *(point_masses.begin() + i);
         if (!(external_accelerations[1] == Vector3D(0, 0, 0))) {   // Skip the stokesDrag calculation if there's no wind
             stokesDrag = stokesCoefficients * (external_accelerations[1] - p.velocity(delta_t)) * abs(dot(p.normal(), external_accelerations[1]));   // Stokes drag equation for particles
         }
         p.forces = gravity + stokesDrag;
         // TODO: need to add check for if cloth is behind object
+        // TODO: possibly scale down wind force radially away from the center?
     }
 
+    int s_size = springs.size();
     // Apply spring forces to each point mass using Hooke's law
-#pragma omp parallel for
-for (Spring &spring : springs) {
-    Vector3D F_s = Vector3D(0, 0, 0);
-    Vector3D springVect = spring.pm_a->position - spring.pm_b->position;
-    // Hook's law (spring force = spring constant * (distance from each end - rest length of spring)
-    if (spring.spring_type == STRUCTURAL && cp->enable_structural_constraints) {
-        F_s = cp->structural_ks * springVect.unit() * (springVect.norm() - spring.rest_length);
-    }
-    else if (spring.spring_type == SHEARING && cp->enable_shearing_constraints) {
-        F_s = cp->shearing_ks * springVect.unit() * (springVect.norm() - spring.rest_length);
-    }
-    else if (spring.spring_type == BENDING && cp->enable_shearing_constraints) {
-        F_s = cp->bending_ks * springVect.unit() * (springVect.norm() - spring.rest_length);
-    }
-        spring.pm_a->forces -= F_s;
-        spring.pm_b->forces += F_s;
-    }
+    #pragma omp parallel for
+    for (int i = 0; i < s_size; i++) {
+        auto spring = &(springs[i]);
+        Vector3D F_s = Vector3D(0, 0, 0);
+        Vector3D springVect = spring->pm_a->position - spring->pm_b->position;
+        // Hook's law (spring force = spring constant * (distance from each end - rest length of spring)
+        if (spring->spring_type == STRUCTURAL && cp->enable_structural_constraints) {
+            F_s = cp->structural_ks * springVect.unit() * (springVect.norm() - spring->rest_length);
+        }
+        else if (spring->spring_type == SHEARING && cp->enable_shearing_constraints) {
+            F_s = cp->shearing_ks * springVect.unit() * (springVect.norm() - spring->rest_length);
+        }
+        else if (spring->spring_type == BENDING && cp->enable_shearing_constraints) {
+            F_s = cp->bending_ks * springVect.unit() * (springVect.norm() - spring->rest_length);
+        }
+            spring->pm_a->forces -= F_s;
+            spring->pm_b->forces += F_s;
+        }
 
     // Apply Verlet integration/Euler forward timestep to each point mass
-#pragma omp parallel for
-for (PointMass &p : point_masses) {
-    if (!p.pinned) {
-        Vector3D temp = p.position;
-        p.position = p.position + (1 - cp->damping/100.0) * (p.position - p.last_position) + (p.forces / mass) * delta_t * delta_t;
-        p.last_position = temp;
+    #pragma omp parallel for
+    for (int i = 0; i < p_size; i++) {
+        auto& p = *(point_masses.begin() + i);
+        if (!p.pinned) {
+            Vector3D temp = p.position;
+            p.position = p.position + (1 - cp->damping/100.0) * (p.position - p.last_position) + (p.forces / mass) * delta_t * delta_t;
+            p.last_position = temp;
+        }
     }
-}
 
     // Organize our masses into a spatial map (hashmap) for efficient access
     build_spatial_map();
 
     // Check for and calculate collisions for each point mass
-#pragma omp parallel for
-    for (PointMass &p : point_masses) {
+    #pragma omp parallel for
+    for (int i = 0; i < p_size; i++) {
+        auto& p = *(point_masses.begin() + i);
         self_collide(p, simulation_steps);
         for (CollisionObject *primitive : *collision_objects)
             primitive->collide(p);
@@ -159,8 +166,9 @@ for (PointMass &p : point_masses) {
     // We don't want the springs to be able to stretch too far in a single timestep (causes instability)
     // So, our last step is to constrain the distance that connected masses can be from each other
     // based on the rest_length of the spring that connects them.
-#pragma omp parallel for
-    for (Spring spring : springs) {
+    #pragma omp parallel for
+    for (int i = 0; i < s_size; i++) {
+        auto spring = springs[i];
         Vector3D springVect = spring.pm_a->position - spring.pm_b->position;
         double difference = springVect.norm() - (1.10 * spring.rest_length);
         if (difference > 0) {
@@ -183,12 +191,21 @@ void Cloth::build_spatial_map() {
         delete(entry.second);
     }
     map.clear();
-    for (PointMass &p : point_masses) {
-        float hash = hash_position(p.position);
-        if (!map[hash])
-            map[hash] = new vector<PointMass *>();
-        map[hash]->push_back(&p);
+    int size = point_masses.size();
+    float *hashes = new float[size]; // allocate array on heap so we can compute hashes in parallel
+    #pragma omp parallel for
+    for (int i = 0; i < size; i++) {
+        //for (PointMass p : point_masses) {
+        auto p = point_masses[i];
+        //float hash = hash_position(p.position);
+        hashes[i] = hash_position(p.position);
     }
+    for (int i = 0; i < size; i++) {
+        if (!map[hashes[i]])
+            map[hashes[i]] = new vector<PointMass *>();
+        map[hashes[i]]->emplace_back(&point_masses[i]);  // replaced push_back with emplace_back
+    }
+    delete[] hashes;
 }
 
 // Check all of the nearby points to pm. If pm is too close to another mass, we apply a corrective force
@@ -197,8 +214,11 @@ void Cloth::build_spatial_map() {
 void Cloth::self_collide(PointMass &pm, double simulation_steps) {
     Vector3D correction;
     int totalCorrections = 0;
-#pragma omp parallel for
-    for (PointMass *p : *map[hash_position(pm.position)]) {
+    auto *points = map[hash_position(pm.position)];
+    int m_size = (*points).size();
+    #pragma omp parallel for
+    for (int i = 0; i < m_size; i++) {
+        auto p = (*points)[i];
         if (p != &pm) {
             Vector3D springVector = pm.position - p->position;
             if (springVector.norm() <= 2 * thickness) {
@@ -213,13 +233,18 @@ void Cloth::self_collide(PointMass &pm, double simulation_steps) {
 // Position hash function
 float Cloth::hash_position(Vector3D pos) {
     float w = 3 * width / num_height_points, h = 3 * height / num_height_points, t = max(w, h);
-    Vector3D boxDimensions{w,h,t};
+    Vector3D boxDimensions{ w,h,t };
     // Convert position to nearest box coordinate
     pos.x -= fmod(pos.x, boxDimensions.x);
     pos.y -= fmod(pos.y, boxDimensions.y);
     pos.z -= fmod(pos.z, boxDimensions.z);
     //return (pos.x + 13 * (pos.y + 17 * pos.z));
     // Hash using primes
+    /*int hash = 13;
+    hash = ((int) (hash + pos.x) << 5) - (hash + pos.x);
+    hash = ((int) (hash + pos.y) << 5) - (hash + pos.y);
+    return ((int) (hash + pos.z) << 5) - (hash + pos.y);*/
+
     return (((((13 + pos.x) * 15) + pos.y) * 17) + pos.z);
 }
 
@@ -244,7 +269,8 @@ void Cloth::buildClothMesh() {
 
     // Create vector of triangles
     for (int y = 0; y < num_height_points - 1; y++) {
-        for (int x = 0; x < num_width_points - 1; x++) {PointMass *pm = &point_masses[y * num_width_points + x];
+        for (int x = 0; x < num_width_points - 1; x++) {
+
             // Get neighboring point masses:
             /*                      *
             * pm_A -------- pm_B   *
@@ -259,6 +285,8 @@ void Cloth::buildClothMesh() {
             * pm_C -------- pm_D   *
             *                      *
             */
+
+            PointMass* pm = &point_masses[y * num_width_points + x];
 
             float u_min = x;
             u_min /= num_width_points - 1;
