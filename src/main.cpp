@@ -511,43 +511,51 @@ int main(int argc, char **argv) {
   // Attach callbacks to the GLFW window
   setGLFWCallbacks();
 
-  int counter = 0, stepLength = 0;
-  auto startTotal = chrono::steady_clock::now();
+  // Begin timer
+  int counter = 0;
+  int total = 0;
 
   while (!glfwWindowShouldClose(window) && counter != timing_steps) {
-    glfwPollEvents();
+      glfwPollEvents();
 
-    glClearColor(0.25f, 0.25f, 0.25f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      glClearColor(0.25f, 0.25f, 0.25f, 1.0f);
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    auto startStep = chrono::steady_clock::now();
-    app->drawContents();  // Simulate and draw a single frame
-    auto endStep = chrono::steady_clock::now();
-    if (!app->isPaused()) {     // only count frames that require physical simulation
-        stepLength += chrono::duration_cast<chrono::milliseconds>(endStep - startStep).count();
-        counter += 1;
-    }
+      auto startStep = chrono::steady_clock::now();
+      app->drawContents();  // Simulate and draw a single frame
+      auto endStep = chrono::steady_clock::now();
+      if (!app->isPaused()) {     // only count frames that require physical simulation
+          total += chrono::duration_cast<chrono::microseconds>(endStep - startStep).count();
+          counter += 1;
+      }
 
-    // Draw nanogui
-    screen->drawContents();
-    screen->drawWidgets();
+      // Draw nanogui
+      screen->drawContents();
+      screen->drawWidgets();
 
-    glfwSwapBuffers(window);
+      glfwSwapBuffers(window);
 
-    if (!app->isAlive()) {
-      glfwSetWindowShouldClose(window, 1);
-    }
+      if (!app->isAlive()) {
+          glfwSetWindowShouldClose(window, 1);
+      }
   }
 
-  // Final project: timing
   if (timing_steps > 0) {
-    auto endTotal = chrono::steady_clock::now();
-    auto duration = chrono::duration_cast<chrono::seconds>(endTotal - startTotal).count();
-    cout << endl << "Total time (" << counter << " total frames): " << duration << " s" << endl;
+      cout << endl << "Total time (" << counter << " total frames): "
+          << total / 1000000.0 << " s" << endl;
   }
-  cout << "Average total time to simulate and display one frame (" << app->getSimulationSteps()
-       << " timesteps): " <<  ((float) stepLength) / counter << " ms" << endl;
-  cout << "Average time to to simulate a single timestep: " << app->getAvgSimulationTime() << " ms" << endl << endl;
+
+  cout << "Average time to simulate and display a frame ("
+      << app->getSimulationSteps()
+      << " timesteps per frame): "
+      << total / 1000.0 / counter
+      << " ms"
+      << endl;
+  cout << "Average time to to simulate a single timestep: "
+      << app->getAvgSimulationTime()
+      << " ms"
+      << endl
+      << endl;
 
   return 0;
 }

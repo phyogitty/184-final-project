@@ -66,26 +66,31 @@ void Cloth::buildGrid() {
     }
     for (int y = 0; y < num_height_points; ++y) {
         for (int x = 0; x < num_width_points; ++x) {
-            PointMass *a = &point_masses[y * num_width_points + x];
-            PointMass *left, *above, *upperLeft, *upperRight, *twoLeft, *twoAbove;
-            left = &point_masses[y * num_width_points + x - 1];
-            above = &point_masses[(y - 1) * num_width_points + x];
-            upperLeft = &point_masses[(y - 1) * num_width_points + x - 1];
-            upperRight = &point_masses[(y - 1) * num_width_points + x + 1];
-            twoLeft = &point_masses[y * num_width_points + x - 2];
-            twoAbove = &point_masses[(y - 2) * num_width_points + x];
-            if (x >= 1)
+            PointMass* a = &point_masses[y * num_width_points + x];
+            if (x >= 1) {
+                PointMass* left = &point_masses[y * num_width_points + x - 1];
                 springs.emplace_back(a, left, STRUCTURAL);
-            if (y >= 1)
+            }
+            if (y >= 1) {
+                PointMass* above = &point_masses[(y - 1) * num_width_points + x];
                 springs.emplace_back(a, above, STRUCTURAL);
-            if (x >= 1 && y >= 1)
+            }
+            if (x >= 1 && y >= 1) {
+                PointMass *upperLeft = &point_masses[(y - 1) * num_width_points + x - 1];
                 springs.emplace_back(a, upperLeft, SHEARING);
-            if (x + 1 < num_width_points && y >= 1)
+            }
+            if (x + 1 < num_width_points && y >= 1) {
+                PointMass *upperRight = &point_masses[(y - 1) * num_width_points + x + 1];
                 springs.emplace_back(a, upperRight, SHEARING);
-            if (x >= 2)
+            }
+            if (x >= 2) {
+                PointMass *twoLeft = &point_masses[y * num_width_points + x - 2];
                 springs.emplace_back(a, twoLeft, BENDING);
-            if (y >= 2)
+            }
+            if (y >= 2) {
+                PointMass *twoAbove = &point_masses[(y - 2) * num_width_points + x];
                 springs.emplace_back(a, twoAbove, BENDING);
+            }
         }
     }
 }

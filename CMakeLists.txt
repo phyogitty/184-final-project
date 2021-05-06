@@ -46,9 +46,10 @@ if(APPLE)
       set(CLANG_CXX_FLAGS "${CLANG_CXX_FLAGS} -funroll-loops")
       set(CLANG_CXX_FLAGS "${CLANG_CXX_FLAGS} -Wno-narrowing")
       set(CLANG_CXX_FLAGS "${CLANG_CXX_FLAGS} -Wno-deprecated-register")
+      set(CLANG_CXX_FLAGS "${CLANG_CXX_FLAGS} -fopenmp") # added -fopenmp
     endif(BUILD_DEBUG)
 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CLANG_CXX_FLAGS} -fopenmp") # added -fopenmp
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CLANG_CXX_FLAGS}")
 
   endif()
 
@@ -105,10 +106,10 @@ if(UNIX AND NOT APPLE)
         set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -g")
     else(BUILD_DEBUG)
         set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -O3")
-        set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -fopenmp")
+        set(GCC_CXX_FLAGS "${GCC_CXX_FLAGS} -fopenmp") # added -fopenmp
     endif(BUILD_DEBUG)
 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_CXX_FLAGS} -fopenmp") # added -fopenmp
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GCC_CXX_FLAGS}")
 
   endif()
 
@@ -135,9 +136,10 @@ if(WIN32)
         set(CMAKE_BUILD_TYPE Debug)
     else(BUILD_DEBUG)
         set(CMAKE_BUILD_TYPE Release)
+        #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS} /openmp") # added /openmp
     endif(BUILD_DEBUG)
 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MSVC_CXX_FLAGS} /openmp") # added /openmp
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MSVC_CXX_FLAGS}")
     
   endif(MSVC)
 
@@ -149,9 +151,10 @@ if(WIN32)
         set(CMAKE_BUILD_TYPE Debug)
     else(BUILD_DEBUG)
         set(CMAKE_BUILD_TYPE Release)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS} -fopenmp") # added -fopenmp
     endif(BUILD_DEBUG)
 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MSVC_CXX_FLAGS} -fopenmp") # added -fopenmp
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MSVC_CXX_FLAGS}")
 
   endif(MINGW)
 
