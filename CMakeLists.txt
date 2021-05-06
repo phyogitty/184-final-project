@@ -136,7 +136,9 @@ if(WIN32)
         set(CMAKE_BUILD_TYPE Debug)
     else(BUILD_DEBUG)
         set(CMAKE_BUILD_TYPE Release)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS} /openmp") # added /openmp
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /openmp") # added /openmp
+        set(MSVC_CXX_FLAGS "${MSVC_CXX_FLAGS} /O2") # code optimization
+        set(MSVC_CXX_FLAGS "${MSVC_CXX_FLAGS} /fp:fast") # faster (less precise) FLOPs
     endif(BUILD_DEBUG)
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MSVC_CXX_FLAGS}")
@@ -151,7 +153,7 @@ if(WIN32)
         set(CMAKE_BUILD_TYPE Debug)
     else(BUILD_DEBUG)
         set(CMAKE_BUILD_TYPE Release)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS} -fopenmp") # added -fopenmp
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp") # added -fopenmp
     endif(BUILD_DEBUG)
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MSVC_CXX_FLAGS}")
