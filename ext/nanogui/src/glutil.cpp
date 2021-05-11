@@ -145,7 +145,7 @@ void GLShader::bind() {
 GLint GLShader::attrib(const std::string &name, bool warn) const {
     GLint id = glGetAttribLocation(mProgramShader, name.c_str());
     if (id == -1 && warn)
-        std::cerr << mName << ": warning: did not find attrib " << name << std::endl;
+        std::cerr << std::endl;
     return id;
 }
 

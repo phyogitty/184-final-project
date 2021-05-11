@@ -193,7 +193,7 @@ void Cloth::build_spatial_map() {
     map.clear();
     int size = point_masses.size();
     float *hashes = new float[size]; // allocate array on heap so we can compute hashes in parallel
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static,8)
     for (int i = 0; i < size; i++) {
         //for (PointMass p : point_masses) {
         auto p = point_masses[i];
@@ -238,7 +238,6 @@ float Cloth::hash_position(Vector3D pos) {
     pos.x -= fmod(pos.x, boxDimensions.x);
     pos.y -= fmod(pos.y, boxDimensions.y);
     pos.z -= fmod(pos.z, boxDimensions.z);
-    //return (pos.x + 13 * (pos.y + 17 * pos.z));
     // Hash using primes
     /*int hash = 13;
     hash = ((int) (hash + pos.x) << 5) - (hash + pos.x);

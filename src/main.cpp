@@ -559,6 +559,6 @@ int main(int argc, char **argv) {
       << " ms"
       << endl
       << endl;
-
+  std::cin.ignore();
   return 0;
 }
